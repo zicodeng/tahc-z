@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/zicodeng/info-344/challenges-zicodeng/servers/gateway/handlers"
 	"net/http"
+	"os"
 )
 
 //main is the main entry point for the server
