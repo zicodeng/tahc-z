@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/zicodeng/info-344/challenges-zicodeng/servers/gateway/handlers"
+	"log"
 	"net/http"
 	"os"
 )
@@ -12,7 +13,7 @@ func main() {
 	// the server should listen on. If empty, default to ":80"
 	addr := os.Getenv("ADDR")
 	if len(addr) == 0 {
-		addr := ":80"
+		addr = ":80"
 	}
 
 	// Create a new mux for the web server.
@@ -20,7 +21,7 @@ func main() {
 
 	// Tell the mux to call your handlers.SummaryHandler function
 	// when the "/v1/summary" URL path is requested.
-	mux.Handle("/v1/summary", handlers.SummaryHandler)
+	mux.HandleFunc("/v1/summary", handlers.SummaryHandler)
 
 	// Start a web server listening on the address you read from
 	// the environment variable, using the mux you created as
