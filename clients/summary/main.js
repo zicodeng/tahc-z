@@ -18,9 +18,13 @@ $(document).ready(function() {
 			url: 'v1/summary?q=' + url
 		})
 			.done(function(data) {
-				var summary = (images = title = desc = type = url = '');
+				var summary = (icon = images = videos = author = title = desc = type = url = '');
 				for (prop in data) {
 					switch (prop) {
+						case 'icon':
+							icon = '<img src="' + data[prop]['url'] + '" >';
+							break;
+
 						case 'images':
 							data[prop].forEach(function(img) {
 								if (img['url']) {
@@ -36,6 +40,44 @@ $(document).ready(function() {
 									images += '>';
 								}
 							});
+							break;
+
+						case 'videos':
+							data[prop].forEach(function(video) {
+								if (video['type'] && video['url']) {
+									if (video['type'] === 'text/html') {
+										videos += '<iframe src="' + video['url'] + '"';
+									} else if (video['type'].startsWith('video')) {
+										videos +=
+											'<video src="' +
+											video['url'] +
+											'"' +
+											'type="' +
+											video['type'] +
+											'" controls ';
+									}
+
+									// Add width and height.
+									if (video['width'] && video['height']) {
+										videos +=
+											'width="' +
+											video['width'] +
+											'" height="' +
+											video['height'] +
+											'"';
+									}
+
+									if (video['type'] === 'text/html') {
+										videos += '"></iframe>';
+									} else if (video['type'].startsWith('video')) {
+										videos += '"></video>';
+									}
+								}
+							});
+							break;
+
+						case 'author':
+							author = '<p>' + data[prop] + '</p>';
 							break;
 
 						case 'title':
@@ -59,7 +101,7 @@ $(document).ready(function() {
 					}
 				}
 				// Preserve order.
-				summary = images + title + desc + type + url;
+				summary = icon + images + videos + title + author + desc + type + url;
 
 				// Display on page.
 				$pageSum.html(summary);

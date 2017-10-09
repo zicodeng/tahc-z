@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// PreviewImage represents a preview image for a page
+// PreviewImage represents a preview image for a page.
 type PreviewImage struct {
 	URL       string `json:"url,omitempty"`
 	SecureURL string `json:"secureURL,omitempty"`
@@ -21,7 +21,17 @@ type PreviewImage struct {
 	Alt       string `json:"alt,omitempty"`
 }
 
-// PageSummary represents summary properties for a web page
+// PreviewVideo represents a preview video for a page.
+type PreviewVideo struct {
+	URL       string `json:"url,omitempty"`
+	SecureURL string `json:"secureURL,omitempty"`
+	Type      string `json:"type,omitempty"`
+	Width     int    `json:"width,omitempty"`
+	Height    int    `json:"height,omitempty"`
+	Alt       string `json:"alt,omitempty"`
+}
+
+// PageSummary represents summary properties for a web page.
 type PageSummary struct {
 	Type        string          `json:"type,omitempty"`
 	URL         string          `json:"url,omitempty"`
@@ -32,6 +42,7 @@ type PageSummary struct {
 	Keywords    []string        `json:"keywords,omitempty"`
 	Icon        *PreviewImage   `json:"icon,omitempty"`
 	Images      []*PreviewImage `json:"images,omitempty"`
+	Videos      []*PreviewVideo `json:"videos,omitempty"`
 }
 
 // SummaryHandler handles requests for the page summary API.
@@ -110,6 +121,15 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 	pageSummary := &PageSummary{}
 	previewImages := []*PreviewImage{}
 	previewImage := &PreviewImage{}
+	previewVideos := []*PreviewVideo{}
+	previewVideo := &PreviewVideo{}
+
+	// If description or title is set by basic name property,
+	// Twitter Card will have priority.
+	// If they are set by Open Graph,
+	// Twitter Card will lose priority.
+	twitterTitlePriority := false
+	twitterDescPriority := false
 
 	// Create a new tokenizer over the response body.
 	tokenizer := html.NewTokenizer(htmlStream)
@@ -147,7 +167,8 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 
 					m := make(map[string]string)
 
-					// Loop through all attributes of the tag.
+					// Loop through all attributes of the tag,
+					// and store them in a map.
 					for moreAttr {
 						attrKey, attrVal, moreAttr = tokenizer.TagAttr()
 
@@ -158,6 +179,8 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 						m[attrKeyStr] = attrValStr
 					}
 
+					// Look through Open Graph properties.
+					// If not found, fall back to Twitter Card.
 					switch property := m["property"]; property {
 					case "og:type":
 						pageSummary.Type = m["content"]
@@ -166,14 +189,17 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 						pageSummary.URL = m["content"]
 
 					case "og:title":
+						twitterTitlePriority = false
 						pageSummary.Title = m["content"]
 
 					case "og:site_name":
 						pageSummary.SiteName = m["content"]
 
 					case "og:description":
+						twitterDescPriority = false
 						pageSummary.Description = m["content"]
 
+					// Preview images.
 					// og:image or og:iamge:url indicates this is a new preview image.
 					case "og:image", "og:image:url":
 						// Create a new instance of PreviewImage.
@@ -184,7 +210,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 						pageSummary.Images = previewImages
 
 					case "og:image:secure_url":
-						previewImage.SecureURL = m["content"]
+						previewImage.SecureURL = fixURL(pageURL, m["content"])
 
 					case "og:image:type":
 						previewImage.Type = m["content"]
@@ -202,11 +228,75 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 
 					case "og:image:alt":
 						previewImage.Alt = m["content"]
+
+					// Preview videos.
+					case "og:video":
+						// Create a new instance of PreviewVideo.
+						previewVideo = &PreviewVideo{}
+
+						previewVideo.URL = fixURL(pageURL, m["content"])
+						previewVideos = append(previewVideos, previewVideo)
+						pageSummary.Videos = previewVideos
+
+					case "og:video:secure_url":
+						previewVideo.SecureURL = fixURL(pageURL, m["content"])
+
+					case "og:video:type":
+						previewVideo.Type = m["content"]
+
+					case "og:video:width", "og:video:height":
+						size, err := strconv.Atoi(m["content"])
+						if err != nil {
+							return nil, fmt.Errorf("error converting string to int: %v", err)
+						}
+						if property == "og:video:width" {
+							previewVideo.Width = size
+						} else {
+							previewVideo.Height = size
+						}
+
+					case "og:video:alt":
+						previewVideo.Alt = m["content"]
+
+					// Add Twitter Card fallback support.
+					case "twitter:card":
+						if pageSummary.Type == "" {
+							pageSummary.Type = m["content"]
+						}
+
+					case "twitter:description":
+						if pageSummary.Description == "" || twitterDescPriority {
+							pageSummary.Description = m["content"]
+						}
+
+					case "twitter:title":
+						if pageSummary.Title == "" || twitterTitlePriority {
+							pageSummary.Title = m["content"]
+						}
+
+					case "twitter:image":
+						// Add a new instance of PreviewImage only if
+						// the previewImages slice doesn't contain an element for that same image URL.
+						contains := false
+						for _, image := range previewImages {
+							if image.URL == m["content"] {
+								contains = true
+							}
+						}
+						if !contains {
+							previewImage = &PreviewImage{}
+
+							previewImage.URL = fixURL(pageURL, m["content"])
+							previewImages = append(previewImages, previewImage)
+							pageSummary.Images = previewImages
+						}
 					}
 
+					// Look through basic <meta> tag name property.
 					switch m["name"] {
 					case "description":
 						if pageSummary.Description == "" {
+							twitterDescPriority = true
 							pageSummary.Description = m["content"]
 						}
 
@@ -252,6 +342,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 					if tokenType == html.TextToken {
 						title := tokenizer.Token().Data
 						if pageSummary.Title == "" {
+							twitterTitlePriority = true
 							pageSummary.Title = title
 						}
 					}
@@ -265,9 +356,9 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 // fixURL converts it to an absolute URL e.g. http://www.example.com/resource/path.
 func fixURL(pageURL, URL string) string {
 
-	site := regexp.MustCompile("https?://\\w+\\.\\w+").FindString(pageURL)
+	site := regexp.MustCompile("https?://[\\w.-]+").FindString(pageURL)
 
-	if strings.HasPrefix(URL, "/") {
+	if !strings.HasPrefix(URL, "http") {
 		return site + URL
 	}
 
