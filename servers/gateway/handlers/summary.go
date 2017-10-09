@@ -45,12 +45,14 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	pageURL := r.URL.Query().Get("q")
 	if len(pageURL) == 0 {
 		http.Error(w, "no query found in the requested URL", http.StatusBadRequest)
+		return
 	}
 
 	// Call fetchHTML() to fetch the requested URL.
 	htmlStream, err := fetchHTML(pageURL)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error fetching HTML: %v\n", err), http.StatusBadRequest)
+		return
 	}
 	// Close the response HTML stream so that you don't leak resources.
 	defer htmlStream.Close()
@@ -59,6 +61,7 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	pageSummary, err := extractSummary(pageURL, htmlStream)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error extracting summary: %v", err), http.StatusBadRequest)
+		return
 	}
 
 	// Add an HTTP header to the response with the name
@@ -82,7 +85,7 @@ func fetchHTML(pageURL string) (io.ReadCloser, error) {
 	// Do an HTTP GET for the page URL.
 	res, err := http.Get(pageURL)
 	if err != nil {
-		return nil, fmt.Errorf("fetching URL failed %v", err)
+		return nil, fmt.Errorf("fetching URL failed: %v", err)
 	}
 
 	// If the response status code is >= 400, return a nil stream and an error.

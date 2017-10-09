@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Page Summary | Info 344</title>
+
+    <style>
+        main {
+            text-align: center;
+        }
+
+        #error,
+        #page-summary {
+            display: none;
+        }
+
+        #error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Page Summary</h1>
+        <h2>Type a URL to fetch Open Graph and other page meta-data.</h2>
+        <form id="request-form" action="">
+            <label for="">Page URL</label>
+            <input id="url-input" type="url" placeholder="e.g. http://ogp.me">
+            <button type="submit">SUBMIT</button>
+        </form>
+        <div id="page-summary"></div>
+        <p id="error"></p>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>

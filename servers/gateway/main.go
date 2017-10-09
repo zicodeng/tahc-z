@@ -19,6 +19,8 @@ func main() {
 	// Create a new mux for the web server.
 	mux := http.NewServeMux()
 
+	mux.Handle("/", http.FileServer(http.Dir("../../clients/summary")))
+
 	// Tell the mux to call your handlers.SummaryHandler function
 	// when the "/v1/summary" URL path is requested.
 	mux.HandleFunc("/v1/summary", handlers.SummaryHandler)
