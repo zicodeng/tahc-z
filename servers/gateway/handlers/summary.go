@@ -62,7 +62,7 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	// Call fetchHTML() to fetch the requested URL.
 	htmlStream, err := fetchHTML(pageURL)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error fetching HTML: %v\n", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("error fetching HTML: %v\n", err), http.StatusInternalServerError)
 		return
 	}
 	// Close the response HTML stream so that you don't leak resources.
@@ -71,7 +71,7 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	// Call extractSummary() to extract the page summary meta-data.
 	pageSummary, err := extractSummary(pageURL, htmlStream)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error extracting summary: %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("error extracting summary: %v", err), http.StatusInternalServerError)
 		return
 	}
 
