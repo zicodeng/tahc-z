@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/zicodeng/info-344/challenges-zicodeng/servers/gateway/handlers"
+	"github.com/info344-a17/challenges-zicodeng/servers/gateway/handlers"
 	"log"
 	"net/http"
 	"os"
