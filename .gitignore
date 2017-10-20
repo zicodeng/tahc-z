@@ -3,3 +3,7 @@
 .idea
 node_modules
 npm-debug.log
+
+tls
+
+gateway.exe
