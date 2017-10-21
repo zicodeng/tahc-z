@@ -6,6 +6,7 @@ import (
 	"golang.org/x/net/html"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -51,6 +52,13 @@ type PageSummary struct {
 // a JSON-encoded PageSummary struct containing the page summary
 // meta-data.
 func SummaryHandler(w http.ResponseWriter, r *http.Request) {
+	// Add an HTTP header to the response with the name
+	// "Access-Control-Allow-Origin" and a value of "*".
+	// This will allow cross-origin AJAX requests to your server.
+	w.Header().Add(headerAccessControlAllowOrigin, "*")
+
+	w.Header().Add(headerContentType, contentTypeJSON)
+
 	// Get the `url` query string parameter value from the request.
 	// If not supplied, respond with an http.StatusBadRequest error.
 	pageURL := r.URL.Query().Get("q")
@@ -74,13 +82,6 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("error extracting summary: %v", err), http.StatusInternalServerError)
 		return
 	}
-
-	// Add an HTTP header to the response with the name
-	// "Access-Control-Allow-Origin" and a value of "*".
-	// This will allow cross-origin AJAX requests to your server.
-	w.Header().Add(headerAccessControlAllowOrigin, "*")
-
-	w.Header().Add(headerContentType, contentTypeJSON)
 
 	// Finally, respond with a JSON-encoded version of the PageSummary
 	// struct. That way the client can easily parse the JSON back into
@@ -108,7 +109,7 @@ func fetchHTML(pageURL string) (io.ReadCloser, error) {
 	// return a nil stream and an error.
 	contentType := res.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "text/html") {
-		return res.Body, fmt.Errorf("response content type was %s, not text/html", contentType)
+		return nil, fmt.Errorf("response content type was %s, not text/html", contentType)
 	}
 
 	return res.Body, nil
@@ -356,11 +357,10 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 // fixURL converts it to an absolute URL e.g. http://www.example.com/resource/path.
 func fixURL(pageURL, URL string) string {
 
-	site := regexp.MustCompile("https?://[\\w.-]+").FindString(pageURL)
+	u, _ := url.Parse(URL)
 
-	if !strings.HasPrefix(URL, "http") {
-		return site + URL
-	}
+	base, _ := url.Parse(pageURL)
 
-	return URL
+	// Resolves a URI reference to an absolute URI from an absolute base URI.
+	return fmt.Sprintf("%s", base.ResolveReference(u))
 }
