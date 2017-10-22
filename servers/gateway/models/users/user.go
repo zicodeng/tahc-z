@@ -73,6 +73,16 @@ func (nu *NewUser) Validate() error {
 		return fmt.Errorf("username must be non-zero length")
 	}
 
+	// FirstName must be non-zero length.
+	if len(nu.FirstName) == 0 {
+		return fmt.Errorf("first name must be non-zero length")
+	}
+
+	// LastName must be non-zero length.
+	if len(nu.LastName) == 0 {
+		return fmt.Errorf("last name must be non-zero length")
+	}
+
 	return nil
 }
 
@@ -82,7 +92,6 @@ func (nu *NewUser) ToUser() (*User, error) {
 
 	// Construct a User based on NewUser.
 	usr := &User{
-		Email:     nu.Email,
 		UserName:  nu.UserName,
 		FirstName: nu.FirstName,
 		LastName:  nu.LastName,
@@ -93,6 +102,9 @@ func (nu *NewUser) ToUser() (*User, error) {
 
 	// Force all characters in the email to be lower-case.
 	email = strings.ToLower(email)
+
+	// Update Email field.
+	usr.Email = email
 
 	// md5 hash the final email string.
 	h := md5.New()
@@ -109,7 +121,7 @@ func (nu *NewUser) ToUser() (*User, error) {
 	usr.ID = bson.NewObjectId()
 
 	// Call .SetPassword() to set the PassHash
-	// field of the User to a hash of the NewUser.Password
+	// field of the User to a hash of the NewUser.Password.
 	err := usr.SetPassword(nu.Password)
 	if err != nil {
 		return nil, fmt.Errorf("error setting password hash of the User: %v", err)
@@ -155,8 +167,8 @@ func (u *User) SetPassword(password string) error {
 	return nil
 }
 
-//Authenticate compares the plaintext password against the stored hash
-//and returns an error if they don't match, or nil if they do
+// Authenticate compares the plaintext password against the stored hash
+// and returns an error if they don't match, or nil if they do.
 func (u *User) Authenticate(password string) error {
 	err := bcrypt.CompareHashAndPassword(u.PassHash, []byte(password))
 	if err != nil {
@@ -168,11 +180,11 @@ func (u *User) Authenticate(password string) error {
 // ApplyUpdates applies the updates to the user. An error
 // is returned if the updates are invalid
 func (u *User) ApplyUpdates(updates *Updates) error {
-	if len(u.FirstName) == 0 {
+	if len(updates.FirstName) == 0 {
 		return fmt.Errorf("first name must be non-zero length")
 	}
 
-	if len(u.LastName) == 0 {
+	if len(updates.LastName) == 0 {
 		return fmt.Errorf("last name must be non-zero length")
 	}
 
