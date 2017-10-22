@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-// newUser creates a NewUser with all valid fields.
-func newUser() *NewUser {
+// NewUser creates a NewUser with all valid fields.
+func CreateNewUser() *NewUser {
 	return &NewUser{
 		Email:        "zicodeng@gmail.com",
 		Password:     "password",
@@ -85,7 +85,7 @@ func TestValidate(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		nu := newUser()
+		nu := CreateNewUser()
 
 		// Mutate valid fields to invalid so we can test them.
 		v := reflect.ValueOf(nu).Elem().FieldByName(c.invalidFieldName)
@@ -132,7 +132,7 @@ func TestToUser(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		nu := newUser()
+		nu := CreateNewUser()
 		nu.Email = c.invalidEmail
 
 		// Convert NewUser to User.
@@ -210,7 +210,7 @@ func TestFullName(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		nu := newUser()
+		nu := CreateNewUser()
 		nu.FirstName = c.firstName
 		nu.LastName = c.lastName
 
