@@ -76,6 +76,10 @@ func (store *MongoStore) Insert(newUser *NewUser) (*User, error) {
 
 // Update applies UserUpdates to the given user ID.
 func (store *MongoStore) Update(userID bson.ObjectId, updates *Updates) error {
+	if updates == nil {
+		return fmt.Errorf("Updates is nil")
+	}
+
 	change := mgo.Change{
 		Update:    bson.M{"$set": updates}, // $set sends a PATCH
 		ReturnNew: true,                    // Get back new version rather than old version of the data.
@@ -94,7 +98,7 @@ func (store *MongoStore) Update(userID bson.ObjectId, updates *Updates) error {
 func (store *MongoStore) Delete(userID bson.ObjectId) error {
 	err := store.session.DB(store.dbname).C(store.colname).RemoveId(userID)
 	if err != nil {
-		fmt.Printf("error deleting data: %v\n", err)
+		return fmt.Errorf("error deleting data: %v", err)
 	}
 
 	return nil

@@ -61,13 +61,13 @@ func (rs *RedisStore) Save(sid SessionID, sessionState interface{}) error {
 // for the given SessionID.
 func (rs *RedisStore) Get(sid SessionID, sessionState interface{}) error {
 	// Get the previously-saved session state data from redis.
-	val, err := rs.Client.Get(sid.getRedisKey()).Result()
+	val, err := rs.Client.Get(sid.getRedisKey()).Bytes()
 	if err != nil {
 		return ErrStateNotFound
 	}
 
 	// Unmarshal it back into the `sessionState` parameter.
-	err = json.Unmarshal([]byte(val), sessionState)
+	err = json.Unmarshal(val, sessionState)
 	if err != nil {
 		return fmt.Errorf("error unmarshalling JSON to struct: %v", err)
 	}

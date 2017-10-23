@@ -1,25 +1,13 @@
 package users
 
 import (
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"os"
 	"testing"
 )
 
-func TestMongoStore(t *testing.T) {
-	mongoAddr := os.Getenv("MONGOADDR")
-	if len(mongoAddr) == 0 {
-		mongoAddr = "localhost:27017"
-	}
+func TestMemStore(t *testing.T) {
 
-	// Create a Mongo session.
-	session, err := mgo.Dial(mongoAddr)
-	if err != nil {
-		t.Fatalf("error dialing mongo: %v", err)
-	}
-
-	store := NewMongoStore(session, "test", "user")
+	store := NewMemStore()
 
 	// Create a NewUser for testing purpose.
 	nu := CreateNewUser()

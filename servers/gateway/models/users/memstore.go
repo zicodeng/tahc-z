@@ -65,6 +65,10 @@ func (ms *MemStore) Insert(newUser *NewUser) (*User, error) {
 
 // Update applies UserUpdates to the given user ID.
 func (ms *MemStore) Update(userID bson.ObjectId, updates *Updates) error {
+	if updates == nil {
+		return fmt.Errorf("Updates is nil")
+	}
+
 	user, err := ms.GetByID(userID)
 	if err != nil {
 		return fmt.Errorf("error retrieving user data")
@@ -85,5 +89,5 @@ func (ms *MemStore) Delete(userID bson.ObjectId) error {
 		return nil
 	}
 
-	return fmt.Errorf("error deleting data")
+	return fmt.Errorf("error deleting data: not found")
 }
