@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	// "crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"fmt"

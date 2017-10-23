@@ -19,6 +19,8 @@ func TestMongoStore(t *testing.T) {
 		t.Fatalf("error dialing mongo: %v", err)
 	}
 
+	defer session.Close()
+
 	store := NewMongoStore(session, "test", "user")
 
 	// Create a NewUser for testing purpose.

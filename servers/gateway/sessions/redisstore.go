@@ -60,11 +60,29 @@ func (rs *RedisStore) Save(sid SessionID, sessionState interface{}) error {
 // Get populates `sessionState` with the data previously saved
 // for the given SessionID.
 func (rs *RedisStore) Get(sid SessionID, sessionState interface{}) error {
-	// Get the previously-saved session state data from redis.
-	val, err := rs.Client.Get(sid.getRedisKey()).Bytes()
+
+	// Use the Pipeline feature of the redis
+	// package to do both the get and the reset of the expiry time
+	// in just one network round trip.
+	pipe := rs.Client.Pipeline()
+
+	// get is a string command that retrieves the previously-saved session state
+	// for a given key from redis.
+	// It is just a command waiting to be executed.
+	get := pipe.Get(sid.getRedisKey())
+
+	// Reset the expiry time, so that it doesn't get deleted until
+	// the SessionDuration has elapsed.
+	pipe.Expire(sid.getRedisKey(), rs.SessionDuration)
+
+	// Execute all previously queued commands using one client-server roundtrip.
+	_, err := pipe.Exec()
 	if err != nil {
 		return ErrStateNotFound
 	}
+
+	// Extract session state data from get command.
+	val, err := get.Bytes()
 
 	// Unmarshal it back into the `sessionState` parameter.
 	err = json.Unmarshal(val, sessionState)
@@ -72,13 +90,6 @@ func (rs *RedisStore) Get(sid SessionID, sessionState interface{}) error {
 		return fmt.Errorf("error unmarshalling JSON to struct: %v", err)
 	}
 
-	// Reset the expiry time, so that it doesn't get deleted until
-	// the SessionDuration has elapsed.
-	rs.Client.Expire(sid.getRedisKey(), rs.SessionDuration)
-
-	//for extra-credit using the Pipeline feature of the redis
-	//package to do both the get and the reset of the expiry time
-	//in just one network round trip!
 	return nil
 }
 
