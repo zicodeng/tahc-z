@@ -48,10 +48,10 @@ func TestMongoStore(t *testing.T) {
 		t.Error("expected error when attempting to retrieve user data that was never stored")
 	}
 
-	// Test inserting a new user into MongoDB.
+	// Test inserting a new user.
 	user1, err := store.Insert(nu)
 	if err != nil {
-		t.Errorf("error inserting a new user to MemStore: %s", err)
+		t.Errorf("error inserting a new user: %s", err)
 	}
 
 	// Test retrieving user data.

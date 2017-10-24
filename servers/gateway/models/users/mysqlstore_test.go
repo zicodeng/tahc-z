@@ -1,13 +1,40 @@
 package users
 
 import (
+	"database/sql"
+	"fmt"
+	// _ allows us to import the MYSQL driver without creating a local name
+	// for the package.
+	// This ensures the package gets into your built executable,
+	// but avoids the compile error you'd normally get from
+	// not calling any functions within that package.
+	_ "github.com/go-sql-driver/mysql"
 	"gopkg.in/mgo.v2/bson"
+	"os"
 	"testing"
 )
 
-func TestMemStore(t *testing.T) {
+func TestMySQLStore(t *testing.T) {
+	mysqlAddr := os.Getenv("MYSQLADDR")
+	if len(mysqlAddr) == 0 {
+		mysqlAddr = "localhost:3306"
+	}
 
-	store := NewMemStore()
+	// Create the data source name, which identifies the
+	// user, password, server address, and default database.
+	dsn := fmt.Sprintf("root:%s@tcp(192.168.99.100:3306)/info_344", os.Getenv("MYSQL_ROOT_PASSWORD"))
+
+	// Create a database object, which manages a pool of
+	// network connections to the database server.
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		fmt.Printf("error opening database: %v\n", err)
+		os.Exit(1)
+	}
+
+	defer db.Close()
+
+	store := NewMySQLStore(db)
 
 	// Create a NewUser for testing purpose.
 	nu := CreateNewUser()
@@ -37,7 +64,7 @@ func TestMemStore(t *testing.T) {
 	// Test inserting a new user.
 	user1, err := store.Insert(nu)
 	if err != nil {
-		t.Errorf("error inserting a new user to MemStore: %s", err)
+		t.Errorf("error inserting a new user: %s", err)
 	}
 
 	// Test retrieving user data.
