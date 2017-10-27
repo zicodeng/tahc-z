@@ -1,5 +1,10 @@
+node_modules
+tls
+
 .DS_Store
 .vscode
 .idea
-node_modules
 npm-debug.log
+gateway.exe
+coverage.out
+
