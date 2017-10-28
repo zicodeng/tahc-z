@@ -42,7 +42,7 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Ensure there isn't already a user in the user store with the same user name.
-	_, err = ctx.UserStore.GetByEmail(newUser.UserName)
+	_, err = ctx.UserStore.GetByUserName(newUser.UserName)
 	if err != nil {
 		http.Error(w, "user with the same username already exists", http.StatusBadRequest)
 		return
@@ -158,6 +158,33 @@ func (ctx *HandlerContext) SessionsHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	beginNewSession(ctx, user, w)
+}
+
+// SessionsMineHandler handles requests for the "current session" resource,
+// and allows clients to end that session.
+func (ctx *HandlerContext) SessionsMineHandler(w http.ResponseWriter, r *http.Request) {
+	// Method must be DELETE.
+	if r.Method != "DELETE" {
+		http.Error(w, "expect DELETE method only", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get session state from session store.
+	sessionState := &SessionState{}
+	_, err := sessions.GetState(r, ctx.SigningKey, ctx.SessionStore, sessionState)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error getting session state: %v", err), http.StatusUnauthorized)
+		return
+	}
+
+	// End the current session.
+	_, err = sessions.EndSession(r, ctx.SigningKey, ctx.SessionStore)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error ending session: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte("signed out"))
 }
 
 // begineNewSession begins a new session
