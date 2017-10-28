@@ -12,14 +12,17 @@ import (
 // and verifying SessionIDs, the session store
 // and the user store.
 type HandlerContext struct {
-	SigningKey   string
-	SessionStore *sessions.Store
-	UserStore    *users.Store
+	SigningKey string
+
+	// The type is an Store interface
+	// rather than an actual Store implementation.
+	SessionStore sessions.Store
+	UserStore    users.Store
 }
 
 // NewHandlerContext constructs a new HanderContext,
 // ensuring that the dependencies are valid values.
-func NewHandlerContext(signingKey string, sessionStore *sessions.Store, userStore *users.Store) *HandlerContext {
+func NewHandlerContext(signingKey string, sessionStore sessions.Store, userStore users.Store) *HandlerContext {
 
 	if len(signingKey) == 0 {
 		panic("signing key has length of zero")
