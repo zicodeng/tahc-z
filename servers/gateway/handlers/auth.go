@@ -36,14 +36,14 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 
 	// Ensure there isn't already a user in the user store with the same email address.
 	_, err = ctx.UserStore.GetByEmail(newUser.Email)
-	if err != nil {
+	if err == nil {
 		http.Error(w, "user with the same email already exists", http.StatusBadRequest)
 		return
 	}
 
 	// Ensure there isn't already a user in the user store with the same user name.
 	_, err = ctx.UserStore.GetByUserName(newUser.UserName)
-	if err != nil {
+	if err == nil {
 		http.Error(w, "user with the same username already exists", http.StatusBadRequest)
 		return
 	}
@@ -201,8 +201,8 @@ func beginNewSession(ctx *HandlerContext, user *users.User, w http.ResponseWrite
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Add(headerContentType, contentTypeJSON)
+	w.WriteHeader(http.StatusCreated)
 
 	err = json.NewEncoder(w).Encode(user)
 	if err != nil {

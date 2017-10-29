@@ -3,7 +3,6 @@ package handlers
 import (
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/users"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/sessions"
-	"gopkg.in/mgo.v2"
 )
 
 // HandlerContext will be a receiver on any of your HTTP
