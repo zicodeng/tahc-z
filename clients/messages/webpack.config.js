@@ -1,7 +1,6 @@
 const webpack = require('webpack');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const GoogleFontsPlugin = require('google-fonts-webpack-plugin');
 
 const entries = {
     index: './src/entries/index.tsx',
@@ -98,11 +97,6 @@ var config = Object.keys(entries).map(function(entry) {
             new ExtractTextPlugin({
                 filename: entry + '-style.min.css',
                 disable: process.env.NODE_ENV === 'development'
-            }),
-
-            new GoogleFontsPlugin({
-                fonts: [{ family: 'Roboto' }, { family: 'Ubuntu' }],
-                path: 'fonts/'
             })
         ]
     };

@@ -1,7 +1,8 @@
 {
     "name": "tahc-z",
     "version": "1.0.0",
-    "description": "Tahc-Z is an advanced version of Z-Chat. This is a class project for Info 344",
+    "description":
+        "Tahc-Z is a more powerful version of Z-Chat. This is a class project for Info 344.",
     "main": "index.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",

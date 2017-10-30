@@ -1,0 +1,13 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+}
+
+.brand {
+    margin: 200px 0;
+    h1 {
+        margin-bottom: 20px;
+        font-size: 75px;
+    }
+}
