@@ -4,15 +4,16 @@ $black: #2C3E50;
 $red: #E74C3C;
 $blue: #3498DB;
 $dark-blue: #2980B9;
-
 // Typography
 $base-font-size: 16px;
-$base-font-family: "Roboto", sans-serif;
-$title-font-family: "Ubuntu", sans-serif;
-
+$base-font-family: "Roboto",
+sans-serif;
+$title-font-family: "Ubuntu",
+sans-serif;
 // Break Points
 $bp-sm: 576px;
 $bp-md: 768px;
 $bp-lg: 992px;
 $bp-xl: 1200px;
-
+$card-shadow : 0 3px 6px rgba(0, 0, 0, 0.16),
+0 3px 6px rgba(0, 0, 0, 0.23);

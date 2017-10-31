@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import LoginForm from '../scripts/components/login-form';
+import LoginForm from './components/login-form';
 
 class Index extends React.Component<any, any> {
     private count: number = 0;

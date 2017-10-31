@@ -135,19 +135,21 @@ class LoginForm extends React.Component<any, any> {
             })
         })
             .then(res => {
+                // If we get a successful response (status code < 300),
+                // save the contents of the Authorization response header to local storage.
+                if (res.status < 300) {
+                    // Save session token to local storage.
+                    const sessionToken = res.headers.get('Authorization');
+
+                    if (sessionToken != null) {
+                        localStorage.setItem('session-token', sessionToken);
+                    }
+                    return res.json();
+                }
+
                 // If response is not ok,
                 // catch the error contained in body.
-                if (!res.ok) {
-                    return res.text();
-                }
-                // Save session token to local storage.
-                const sessionToken = res.headers.get('Authorization');
-
-                if (sessionToken != null) {
-                    localStorage.setItem('session-token', sessionToken);
-                }
-
-                return res.json();
+                return res.text();
             })
             .then(data => {
                 // If data type is string,
@@ -163,7 +165,7 @@ class LoginForm extends React.Component<any, any> {
                     this.setState({
                         loginError: ''
                     });
-                    console.log(data);
+                    window.location.replace('app.html');
                 }
             })
             .catch(error => {
@@ -209,11 +211,17 @@ class LoginForm extends React.Component<any, any> {
             })
         })
             .then(res => {
-                if (!res.ok) {
-                    return res.text();
+                if (res.status < 300) {
+                    // Save session token to local storage.
+                    const sessionToken = res.headers.get('Authorization');
+
+                    if (sessionToken != null) {
+                        localStorage.setItem('session-token', sessionToken);
+                    }
+                    return res.json();
                 }
 
-                return res.json();
+                return res.text();
             })
             .then(data => {
                 if (typeof data === 'string') {
@@ -228,7 +236,7 @@ class LoginForm extends React.Component<any, any> {
                     this.setState({
                         registerError: ''
                     });
-                    console.log(data);
+                    window.location.replace('app.html');
                 }
             })
             .catch(error => {
