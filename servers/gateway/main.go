@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/go-redis/redis"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/handlers"
+	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/attempts"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/users"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/sessions"
 	"gopkg.in/mgo.v2"
@@ -41,11 +42,16 @@ func main() {
 		redisAddr = "localhost:6379"
 	}
 
+	// Shared Redis client.
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: redisAddr,
 	})
 
+	// Redis store for storing SessionState.
 	redisStore := sessions.NewRedisStore(redisClient, time.Hour)
+
+	// Redis store for storing Attempt.
+	attemptStore := attempts.NewRedisStore(redisClient)
 
 	// Set up MongoDB connection.
 	dbAddr := os.Getenv("DBADDR")
@@ -62,7 +68,7 @@ func main() {
 	mongoStore := users.NewMongoStore(mongoSession, "info_344", "users")
 
 	// Initialize HandlerContext.
-	ctx := handlers.NewHandlerContext(sessionKey, redisStore, mongoStore)
+	ctx := handlers.NewHandlerContext(sessionKey, redisStore, mongoStore, attemptStore)
 
 	// Create a new mux for the web server.
 	mux := http.NewServeMux()

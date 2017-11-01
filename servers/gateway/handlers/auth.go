@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/attempts"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/users"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/sessions"
 	"net/http"
@@ -144,6 +145,49 @@ func (ctx *HandlerContext) SessionsHandler(w http.ResponseWriter, r *http.Reques
 	// and the message "invalid credentials".
 	user, err := ctx.UserStore.GetByEmail(credentials.Email)
 	if err != nil {
+		attempt := &attempts.Attempt{}
+		// Get failed attempt from AttemptStore.
+		err := ctx.AttemptStore.Get(credentials.Email, attempt)
+
+		if err == attempts.ErrAttemptNotFound {
+			initAttempt := &attempts.Attempt{
+				Count:     1,
+				IsBlocked: false,
+			}
+			err := ctx.AttemptStore.Save(credentials.Email, initAttempt, attempts.DefaultExpireTime)
+			if err != nil {
+				http.Error(w, "error saving data to Redis", http.StatusInternalServerError)
+				return
+			}
+		} else {
+			// If there is an existing Attempt stored in Redis,
+			// and its current Count is less than max attempt,
+			// increase its Count by one.
+			// Otherwise block the user to sign in
+			// for this particular email until freeze time is over.
+			if attempt.Count < attempts.MaxAttempt {
+				attempt.Count++
+				err := ctx.AttemptStore.Save(credentials.Email, attempt, attempts.DefaultExpireTime)
+				if err != nil {
+					http.Error(w, "error saving data to Redis", http.StatusInternalServerError)
+					return
+				}
+			} else {
+				// If not blocked yet, block it.
+				if !attempt.IsBlocked {
+					attempt.IsBlocked = true
+					err := ctx.AttemptStore.Save(credentials.Email, attempt, attempts.BlockTime)
+					if err != nil {
+						http.Error(w, "error saving data to Redis", http.StatusInternalServerError)
+						return
+					}
+				}
+				// If this email is already blocked for further sign-in,
+				// report error.
+				http.Error(w, "you have already failed sign-in more than 5 times with this email. Please wait for ten minutes or try different email", http.StatusBadRequest)
+				return
+			}
+		}
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}

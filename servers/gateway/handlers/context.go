@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/attempts"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/users"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/sessions"
 )
@@ -17,11 +18,12 @@ type HandlerContext struct {
 	// rather than an actual Store implementation.
 	SessionStore sessions.Store
 	UserStore    users.Store
+	AttemptStore attempts.Store
 }
 
 // NewHandlerContext constructs a new HanderContext,
 // ensuring that the dependencies are valid values.
-func NewHandlerContext(signingKey string, sessionStore sessions.Store, userStore users.Store) *HandlerContext {
+func NewHandlerContext(signingKey string, sessionStore sessions.Store, userStore users.Store, attemptStore attempts.Store) *HandlerContext {
 
 	if len(signingKey) == 0 {
 		panic("signing key has length of zero")
@@ -35,5 +37,9 @@ func NewHandlerContext(signingKey string, sessionStore sessions.Store, userStore
 		panic("nil user store")
 	}
 
-	return &HandlerContext{signingKey, sessionStore, userStore}
+	if attemptStore == nil {
+		panic("nil attempt store")
+	}
+
+	return &HandlerContext{signingKey, sessionStore, userStore, attemptStore}
 }
