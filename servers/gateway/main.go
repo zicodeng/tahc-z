@@ -48,7 +48,7 @@ func main() {
 	})
 
 	// Redis store for storing SessionState.
-	redisStore := sessions.NewRedisStore(redisClient, time.Hour)
+	sessionStore := sessions.NewRedisStore(redisClient, time.Hour)
 
 	// Redis store for storing Attempt.
 	attemptStore := attempts.NewRedisStore(redisClient)
@@ -65,10 +65,10 @@ func main() {
 		log.Fatalf("error dialing mongo: %v", err)
 	}
 
-	mongoStore := users.NewMongoStore(mongoSession, "info_344", "users")
+	userStore := users.NewMongoStore(mongoSession, "info_344", "users")
 
 	// Initialize HandlerContext.
-	ctx := handlers.NewHandlerContext(sessionKey, redisStore, mongoStore, attemptStore)
+	ctx := handlers.NewHandlerContext(sessionKey, sessionStore, userStore, attemptStore)
 
 	// Create a new mux for the web server.
 	mux := http.NewServeMux()
