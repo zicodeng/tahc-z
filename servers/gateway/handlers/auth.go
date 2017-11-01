@@ -145,48 +145,10 @@ func (ctx *HandlerContext) SessionsHandler(w http.ResponseWriter, r *http.Reques
 	// and the message "invalid credentials".
 	user, err := ctx.UserStore.GetByEmail(credentials.Email)
 	if err != nil {
-		attempt := &attempts.Attempt{}
-		// Get failed attempt from AttemptStore.
-		err := ctx.AttemptStore.Get(credentials.Email, attempt)
-
-		if err == attempts.ErrAttemptNotFound {
-			initAttempt := &attempts.Attempt{
-				Count:     1,
-				IsBlocked: false,
-			}
-			err := ctx.AttemptStore.Save(credentials.Email, initAttempt, attempts.DefaultExpireTime)
-			if err != nil {
-				http.Error(w, "error saving data to Redis", http.StatusInternalServerError)
-				return
-			}
-		} else {
-			// If there is an existing Attempt stored in Redis,
-			// and its current Count is less than max attempt,
-			// increase its Count by one.
-			// Otherwise block the user to sign in
-			// for this particular email until freeze time is over.
-			if attempt.Count < attempts.MaxAttempt {
-				attempt.Count++
-				err := ctx.AttemptStore.Save(credentials.Email, attempt, attempts.DefaultExpireTime)
-				if err != nil {
-					http.Error(w, "error saving data to Redis", http.StatusInternalServerError)
-					return
-				}
-			} else {
-				// If not blocked yet, block it.
-				if !attempt.IsBlocked {
-					attempt.IsBlocked = true
-					err := ctx.AttemptStore.Save(credentials.Email, attempt, attempts.BlockTime)
-					if err != nil {
-						http.Error(w, "error saving data to Redis", http.StatusInternalServerError)
-						return
-					}
-				}
-				// If this email is already blocked for further sign-in,
-				// report error.
-				http.Error(w, "you have already failed sign-in more than 5 times with this email. Please wait for ten minutes or try different email", http.StatusBadRequest)
-				return
-			}
+		err := blockRepeatedFailedSignIns(ctx, credentials.Email)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
@@ -197,7 +159,20 @@ func (ctx *HandlerContext) SessionsHandler(w http.ResponseWriter, r *http.Reques
 	// and the message "invalid credentials".
 	err = user.Authenticate(credentials.Password)
 	if err != nil {
+		err := blockRepeatedFailedSignIns(ctx, credentials.Email)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	// If the user signs in successfully,
+	// delete Attempt data associated with the email.
+	err = ctx.AttemptStore.Delete(credentials.Email)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -253,4 +228,50 @@ func beginNewSession(ctx *HandlerContext, user *users.User, w http.ResponseWrite
 		http.Error(w, "error encoding User struct to JSON", http.StatusInternalServerError)
 		return
 	}
+}
+
+// blockRepeatedFailedSignIns locks an account
+// for a short period of time after several failed sign-in attempts.
+func blockRepeatedFailedSignIns(ctx *HandlerContext, email string) error {
+	attempt := &attempts.Attempt{}
+	// Get failed attempt from AttemptStore.
+	err := ctx.AttemptStore.Get(email, attempt)
+
+	if err == attempts.ErrAttemptNotFound {
+		initAttempt := &attempts.Attempt{
+			Count:     1,
+			IsBlocked: false,
+		}
+		err := ctx.AttemptStore.Save(email, initAttempt, attempts.DefaultExpireTime)
+		if err != nil {
+			return fmt.Errorf("error saving data to Redis")
+		}
+	} else {
+		// If there is an existing Attempt stored in Redis,
+		// and its current Count is less than max attempt,
+		// increase its Count by one.
+		// Otherwise block the user to sign in
+		// for this particular email until freeze time is over.
+		if attempt.Count < attempts.MaxAttempt {
+			attempt.Count++
+			err := ctx.AttemptStore.Save(email, attempt, attempts.DefaultExpireTime)
+			if err != nil {
+				return fmt.Errorf("error saving data to Redis")
+			}
+		} else {
+			// If not blocked yet, block it.
+			if !attempt.IsBlocked {
+				attempt.IsBlocked = true
+				err := ctx.AttemptStore.Save(email, attempt, attempts.BlockTime)
+				if err != nil {
+					return fmt.Errorf("error saving data to Redis")
+				}
+			}
+			// If this email is already blocked for further sign-in,
+			// report error.
+			return fmt.Errorf("you have already failed sign-in more than 5 times with this email. Please wait for ten minutes or try different email")
+		}
+	}
+
+	return nil
 }
