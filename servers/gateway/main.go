@@ -4,6 +4,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/handlers"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/attempts"
+	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/resetcodes"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/users"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/sessions"
 	"gopkg.in/mgo.v2"
@@ -53,6 +54,9 @@ func main() {
 	// Redis store for storing Attempt.
 	attemptStore := attempts.NewRedisStore(redisClient)
 
+	// Redis store for storing ResetCode.
+	resetCodeStore := resetcodes.NewRedisStore(redisClient, resetcodes.CodeDuration)
+
 	// Set up MongoDB connection.
 	dbAddr := os.Getenv("DBADDR")
 	if len(dbAddr) == 0 {
@@ -68,7 +72,7 @@ func main() {
 	userStore := users.NewMongoStore(mongoSession, "info_344", "users")
 
 	// Initialize HandlerContext.
-	ctx := handlers.NewHandlerContext(sessionKey, sessionStore, userStore, attemptStore)
+	ctx := handlers.NewHandlerContext(sessionKey, sessionStore, userStore, attemptStore, resetCodeStore)
 
 	// Create a new mux for the web server.
 	mux := http.NewServeMux()
@@ -82,6 +86,9 @@ func main() {
 
 	mux.HandleFunc("/v1/sessions", ctx.SessionsHandler)
 	mux.HandleFunc("/v1/sessions/mine", ctx.SessionsMineHandler)
+
+	mux.HandleFunc("/v1/resetcodes", ctx.ResetCodesHandler)
+	mux.HandleFunc("/v1/passwords", ctx.ResetPasswordHandler)
 
 	// Wraps mux inside CORSHandler.
 	corsMux := handlers.NewCORSHandler(mux)

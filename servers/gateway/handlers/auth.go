@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/attempts"
+	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/resetcodes"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/users"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/sessions"
 	"net/http"
+	"net/smtp"
 	"time"
 )
 
@@ -274,4 +276,166 @@ func blockRepeatedFailedSignIns(ctx *HandlerContext, email string) error {
 	}
 
 	return nil
+}
+
+// ResetCodesHandler handles a reset code request
+// and sends a reset code to the email contained in the request.
+func (ctx *HandlerContext) ResetCodesHandler(w http.ResponseWriter, r *http.Request) {
+	// Method must be POST.
+	if r.Method != "POST" {
+		http.Error(w, "expect POST method only", http.StatusMethodNotAllowed)
+		return
+	}
+
+	resetCodeRequest := &resetcodes.ResetCodeRequest{}
+
+	err := json.NewDecoder(r.Body).Decode(resetCodeRequest)
+	if err != nil {
+		http.Error(w, "error decoding request body: invalid JSON in request body", http.StatusBadRequest)
+		return
+	}
+
+	// Check if the reset request actually contains
+	// email that has associated user stored in our database.
+	_, err = ctx.UserStore.GetByEmail(resetCodeRequest.Email)
+	if err != nil {
+		http.Error(w, "no user found with this email", http.StatusBadRequest)
+		return
+	}
+
+	// Check if the Redis store already contains this reset code.
+	err = ctx.ResetCodeStore.Get(resetCodeRequest.Email)
+	if err != resetcodes.ErrResetCodeNotFound {
+		http.Error(w, "reset code already sent. please check your email inbox", http.StatusBadRequest)
+		return
+	}
+
+	// Generate a reset code.
+	// We will just use session ID generator for our reset code.
+	code, err := sessions.NewSessionID(ctx.SigningKey)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error generating reset code: %s", err), http.StatusInternalServerError)
+		return
+	}
+	resetCode := string(code)
+
+	// Save this reset code to Redis.
+	err = ctx.ResetCodeStore.Save(resetCodeRequest.Email, resetCode)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error saving reset code: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Send this rest code to the provided email.
+	// Set up authentication information.
+	auth := smtp.PlainAuth("", "tahczclient@gmail.com", "54tahczclient", "smtp.gmail.com")
+
+	// Connect to the server, authenticate, set the sender and recipient,
+	// and send the email all in one step.
+	to := []string{resetCodeRequest.Email}
+	msg := []byte("To:" + resetCodeRequest.Email + "\r\n" +
+		"Subject: Tahc-Z: Password Reset Code\r\n" +
+		resetCode)
+	err = smtp.SendMail("smtp.gmail.com:587", auth, "tahczclient@gmail.com", to, msg)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error sending reset code: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte("password reset code sent"))
+}
+
+// ResetPasswordHandler resets the user's password.
+func (ctx *HandlerContext) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	// Method must be PUT.
+	if r.Method != "PUT" {
+		http.Error(w, "expect PUT method only", http.StatusMethodNotAllowed)
+		return
+	}
+
+	passwordReset := &resetcodes.PasswordReset{}
+
+	err := json.NewDecoder(r.Body).Decode(passwordReset)
+	if err != nil {
+		http.Error(w, "error decoding request body: invalid JSON in request body", http.StatusBadRequest)
+		return
+	}
+
+	email := r.URL.Query().Get("email")
+	if len(email) == 0 {
+		http.Error(w, "no email found in the requested URL", http.StatusBadRequest)
+		return
+	}
+
+	// Make sure this reset code is used within the valid duration.
+	err = ctx.ResetCodeStore.Get(email)
+	if err == resetcodes.ErrResetCodeNotFound {
+		http.Error(w, "reset code expired", http.StatusBadRequest)
+		return
+	}
+
+	// Validate reset code.
+	_, err = sessions.ValidateID(passwordReset.ResetCode, ctx.SigningKey)
+	if err != nil {
+		http.Error(w, "invalid reset code", http.StatusBadRequest)
+		return
+	}
+
+	// Password and PasswordConf must match.
+	if passwordReset.Password != passwordReset.PasswordConf {
+		http.Error(w, "password must match password confirmation", http.StatusBadRequest)
+		return
+	}
+
+	// Password must be at least 6 characters.
+	if len(passwordReset.Password) < 6 {
+		http.Error(w, "password must be at least 6 characters", http.StatusBadRequest)
+		return
+	}
+
+	// Get the user with the provided email.
+	oldUser, err := ctx.UserStore.GetByEmail(email)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error retrieving user data: %s", err), http.StatusBadRequest)
+		return
+	}
+
+	// Delete the old user.
+	err = ctx.UserStore.Delete(oldUser.ID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error deleting user data: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Create a new user based on the old user.
+	newUser := &users.NewUser{
+		Email:        oldUser.Email,
+		Password:     passwordReset.Password,
+		PasswordConf: passwordReset.PasswordConf,
+		UserName:     oldUser.UserName,
+		FirstName:    oldUser.FirstName,
+		LastName:     oldUser.LastName,
+	}
+
+	// Validate the NewUser.
+	err = newUser.Validate()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error validating new user: %s", err), http.StatusBadRequest)
+		return
+	}
+
+	// Insert the new user into the user store.
+	user, err := ctx.UserStore.Insert(newUser)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error inserting new user: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	err = ctx.ResetCodeStore.Delete(email)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error deleting data: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	beginNewSession(ctx, user, w)
 }
