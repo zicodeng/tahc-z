@@ -29,8 +29,8 @@ class App extends React.Component<any, any> {
                             </li>
                         </ul>
                     </nav>
-                    <div className="log-out" onClick={e => this.logOut(e)}>
-                        Log Out
+                    <div className="log-out" onClick={e => this.signOut(e)}>
+                        Sign Out
                         <i className="fa fa-sign-out" aria-hidden="true" />
                     </div>
                 </aside>
@@ -83,8 +83,8 @@ class App extends React.Component<any, any> {
             });
     }
 
-    // Log out the user and end the session.
-    private logOut(e): void {
+    // Sign out the user and end the session.
+    private signOut(e): void {
         e.preventDefault();
 
         const sessionToken = this.getSessionToken();
