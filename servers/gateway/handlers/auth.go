@@ -101,6 +101,10 @@ func (ctx *HandlerContext) UsersMeHandler(w http.ResponseWriter, r *http.Request
 			return
 		}
 
+		// Remove the user old fields from the trie.
+		ctx.Trie.Remove(sessionState.User.FirstName, sessionState.User.ID)
+		ctx.Trie.Remove(sessionState.User.LastName, sessionState.User.ID)
+
 		// Update in-memory session state.
 		sessionState.User.FirstName = updates.FirstName
 		sessionState.User.LastName = updates.LastName
@@ -118,6 +122,10 @@ func (ctx *HandlerContext) UsersMeHandler(w http.ResponseWriter, r *http.Request
 			http.Error(w, fmt.Sprintf("error updating user store: %s", err), http.StatusInternalServerError)
 			return
 		}
+
+		// Insert the updated user fields into the trie.
+		ctx.Trie.Insert(sessionState.User.FirstName, sessionState.User.ID)
+		ctx.Trie.Insert(sessionState.User.LastName, sessionState.User.ID)
 
 		w.Header().Add(headerContentType, contentTypeJSON)
 		err = json.NewEncoder(w).Encode(sessionState.User)
