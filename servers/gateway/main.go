@@ -71,6 +71,9 @@ func main() {
 
 	userStore := users.NewMongoStore(mongoSession, "info_344", "users")
 
+	// Loading existing users into Trie at start-up.
+	userStore.Index()
+
 	// Initialize HandlerContext.
 	ctx := handlers.NewHandlerContext(sessionKey, sessionStore, userStore, attemptStore, resetCodeStore)
 

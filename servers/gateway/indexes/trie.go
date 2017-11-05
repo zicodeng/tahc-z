@@ -9,7 +9,7 @@ import (
 // A Trie represents a trie data structure.
 type Trie struct {
 	root *node
-	mx   sync.RWMutex
+	Mx   sync.RWMutex
 }
 
 // NewTrie constructs a new empty trie with a root node.

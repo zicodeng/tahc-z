@@ -26,8 +26,9 @@ docker run \
 -d \
 --name mongo-server \
 -p 27017:27017 \
+-e MONGO_INITDB_DATABASE=$DBNAME \
 --restart unless-stopped \
-mongo
+drstearns/mongo1kusers
 
 # Run API server.
 go run main.go
