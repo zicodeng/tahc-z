@@ -58,6 +58,14 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Add this new user to our trie.
+	ctx.Trie.Mx.Lock()
+	ctx.Trie.Insert(user.Email, user.ID)
+	ctx.Trie.Insert(user.UserName, user.ID)
+	ctx.Trie.Insert(user.FirstName, user.ID)
+	ctx.Trie.Insert(user.LastName, user.ID)
+	ctx.Trie.Mx.Unlock()
+
 	beginNewSession(ctx, user, w)
 }
 

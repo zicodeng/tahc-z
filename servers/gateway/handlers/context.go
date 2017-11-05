@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/info344-a17/challenges-zicodeng/servers/gateway/indexes"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/attempts"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/resetcodes"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/users"
@@ -14,7 +15,7 @@ import (
 // and the user store.
 type HandlerContext struct {
 	SigningKey string
-
+	Trie       *indexes.Trie
 	// The type is an Store interface
 	// rather than an actual Store implementation.
 	SessionStore   sessions.Store
@@ -27,6 +28,7 @@ type HandlerContext struct {
 // ensuring that the dependencies are valid values.
 func NewHandlerContext(
 	signingKey string,
+	trie *indexes.Trie,
 	sessionStore sessions.Store,
 	userStore users.Store,
 	attemptStore attempts.Store,
@@ -34,6 +36,10 @@ func NewHandlerContext(
 
 	if len(signingKey) == 0 {
 		panic("signing key has length of zero")
+	}
+
+	if trie == nil {
+		panic("no trie found")
 	}
 
 	if sessionStore == nil {
@@ -52,5 +58,5 @@ func NewHandlerContext(
 		panic("nil reset code store")
 	}
 
-	return &HandlerContext{signingKey, sessionStore, userStore, attemptStore, resetCodeStore}
+	return &HandlerContext{signingKey, trie, sessionStore, userStore, attemptStore, resetCodeStore}
 }
