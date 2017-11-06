@@ -105,7 +105,7 @@ func (store *MongoStore) Delete(userID bson.ObjectId) error {
 	return nil
 }
 
-// Index stores all users email, username, lastname, and firstname into a Trie.
+// Index stores all users email, username, lastname, and firstname into a trie.
 func (store *MongoStore) Index() *indexes.Trie {
 	user := &User{}
 	trie := indexes.NewTrie()
@@ -128,4 +128,18 @@ func (store *MongoStore) Index() *indexes.Trie {
 	}
 
 	return trie
+}
+
+// ConvertToUsers converts all keys(User IDs) in a given map to a slice of User.
+func (store *MongoStore) ConvertToUsers(userIDs map[bson.ObjectId]bool) ([]*User, error) {
+	users := []*User{}
+	for userID := range userIDs {
+		user, err := store.GetByID(userID)
+		if err != nil {
+			return nil, fmt.Errorf("error getting user: %v", err)
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
 }

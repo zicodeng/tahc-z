@@ -15,58 +15,99 @@ import (
 // UsersHandler handles requests for the "users" resource,
 // and allows clients to create new user accounts.
 func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) {
-	// Method must be POST.
-	if r.Method != "POST" {
-		http.Error(w, "expect POST method only", http.StatusMethodNotAllowed)
+	switch r.Method {
+
+	// Finds the first 20 users that
+	// match the value of the q query string parameter,
+	// and respond with those user profiles encoded as a JSON array of objects.
+	case "GET":
+		// Get session state from session store.
+		sessionState := &SessionState{}
+		_, err := sessions.GetState(r, ctx.SigningKey, ctx.SessionStore, sessionState)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error getting session state: %v", err), http.StatusUnauthorized)
+			return
+		}
+
+		results := []*users.User{}
+
+		q := r.URL.Query().Get("q")
+		if len(q) == 0 {
+			w.Header().Add(headerContentType, contentTypeJSON)
+			err = json.NewEncoder(w).Encode(results)
+			if err != nil {
+				http.Error(w, "error encoding search results to JSON", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		userIDs := ctx.Trie.Search(20, q)
+		results, err = ctx.UserStore.ConvertToUsers(userIDs)
+		if err != nil {
+			http.Error(w, "error converting to users", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Add(headerContentType, contentTypeJSON)
+		err = json.NewEncoder(w).Encode(results)
+		if err != nil {
+			http.Error(w, "error encoding search results to JSON", http.StatusInternalServerError)
+			return
+		}
+
+	// Create a new user.
+	case "POST":
+		// Create an empty User to hold decoded request body.
+		newUser := &users.NewUser{}
+
+		err := json.NewDecoder(r.Body).Decode(newUser)
+		if err != nil {
+			http.Error(w, "error decoding request body: invalid JSON in request body", http.StatusBadRequest)
+			return
+		}
+
+		// Validate the NewUser.
+		err = newUser.Validate()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error validating new user: %s", err), http.StatusBadRequest)
+			return
+		}
+
+		// Ensure there isn't already a user in the user store with the same email address.
+		_, err = ctx.UserStore.GetByEmail(newUser.Email)
+		if err == nil {
+			http.Error(w, "user with the same email already exists", http.StatusBadRequest)
+			return
+		}
+
+		// Ensure there isn't already a user in the user store with the same user name.
+		_, err = ctx.UserStore.GetByUserName(newUser.UserName)
+		if err == nil {
+			http.Error(w, "user with the same username already exists", http.StatusBadRequest)
+			return
+		}
+
+		// Insert the new user into the user store.
+		user, err := ctx.UserStore.Insert(newUser)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error inserting new user: %s", err), http.StatusInternalServerError)
+			return
+		}
+
+		// Add this new user to our trie.
+		ctx.Trie.Mx.Lock()
+		ctx.Trie.Insert(user.Email, user.ID)
+		ctx.Trie.Insert(user.UserName, user.ID)
+		ctx.Trie.Insert(user.FirstName, user.ID)
+		ctx.Trie.Insert(user.LastName, user.ID)
+		ctx.Trie.Mx.Unlock()
+
+		beginNewSession(ctx, user, w)
+
+	default:
+		http.Error(w, "expect GET or POST method only", http.StatusMethodNotAllowed)
 		return
 	}
-
-	// Create an empty User to hold decoded request body.
-	newUser := &users.NewUser{}
-
-	err := json.NewDecoder(r.Body).Decode(newUser)
-	if err != nil {
-		http.Error(w, "error decoding request body: invalid JSON in request body", http.StatusBadRequest)
-		return
-	}
-
-	// Validate the NewUser.
-	err = newUser.Validate()
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error validating new user: %s", err), http.StatusBadRequest)
-		return
-	}
-
-	// Ensure there isn't already a user in the user store with the same email address.
-	_, err = ctx.UserStore.GetByEmail(newUser.Email)
-	if err == nil {
-		http.Error(w, "user with the same email already exists", http.StatusBadRequest)
-		return
-	}
-
-	// Ensure there isn't already a user in the user store with the same user name.
-	_, err = ctx.UserStore.GetByUserName(newUser.UserName)
-	if err == nil {
-		http.Error(w, "user with the same username already exists", http.StatusBadRequest)
-		return
-	}
-
-	// Insert the new user into the user store.
-	user, err := ctx.UserStore.Insert(newUser)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error inserting new user: %s", err), http.StatusInternalServerError)
-		return
-	}
-
-	// Add this new user to our trie.
-	ctx.Trie.Mx.Lock()
-	ctx.Trie.Insert(user.Email, user.ID)
-	ctx.Trie.Insert(user.UserName, user.ID)
-	ctx.Trie.Insert(user.FirstName, user.ID)
-	ctx.Trie.Insert(user.LastName, user.ID)
-	ctx.Trie.Mx.Unlock()
-
-	beginNewSession(ctx, user, w)
 }
 
 // UsersMeHandler handles requests for the "current user" resource.
@@ -102,8 +143,10 @@ func (ctx *HandlerContext) UsersMeHandler(w http.ResponseWriter, r *http.Request
 		}
 
 		// Remove the user old fields from the trie.
+		ctx.Trie.Mx.Lock()
 		ctx.Trie.Remove(sessionState.User.FirstName, sessionState.User.ID)
 		ctx.Trie.Remove(sessionState.User.LastName, sessionState.User.ID)
+		ctx.Trie.Mx.Unlock()
 
 		// Update in-memory session state.
 		sessionState.User.FirstName = updates.FirstName
@@ -124,8 +167,10 @@ func (ctx *HandlerContext) UsersMeHandler(w http.ResponseWriter, r *http.Request
 		}
 
 		// Insert the updated user fields into the trie.
+		ctx.Trie.Mx.Lock()
 		ctx.Trie.Insert(sessionState.User.FirstName, sessionState.User.ID)
 		ctx.Trie.Insert(sessionState.User.LastName, sessionState.User.ID)
+		ctx.Trie.Mx.Unlock()
 
 		w.Header().Add(headerContentType, contentTypeJSON)
 		err = json.NewEncoder(w).Encode(sessionState.User)

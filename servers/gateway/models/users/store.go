@@ -2,6 +2,7 @@ package users
 
 import (
 	"errors"
+	"github.com/info344-a17/challenges-zicodeng/servers/gateway/indexes"
 
 	"gopkg.in/mgo.v2/bson"
 )
@@ -29,4 +30,10 @@ type Store interface {
 
 	// Delete deletes the user with the given ID.
 	Delete(userID bson.ObjectId) error
+
+	// Index stores user information into a trie.
+	Index() *indexes.Trie
+
+	// ConvertToUsers converts all keys(User IDs) in a given map to a slice of User.
+	ConvertToUsers(userIDs map[bson.ObjectId]bool) ([]*User, error)
 }
