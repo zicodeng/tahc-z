@@ -1,5 +1,6 @@
 import * as React from 'react';
 import UserProfile from './components/user-profile';
+import Search from './components/search';
 
 class App extends React.Component<any, any> {
     constructor(props, context) {
@@ -7,7 +8,8 @@ class App extends React.Component<any, any> {
         this.state = {
             user: {},
             hasUser: false,
-            option: ''
+            option: '',
+            sessionToken: ''
         };
     }
 
@@ -18,7 +20,8 @@ class App extends React.Component<any, any> {
         return (
             <div className="container">
                 <aside>
-                    <h3>{`Hello, ${this.state.user.firstName}!`}</h3>
+                    <h3 onClick={e => this.handleClickMenuOption('default')}>{`Hello, ${this.state
+                        .user.firstName}!`}</h3>
                     <nav>
                         <ul>
                             <li
@@ -26,6 +29,12 @@ class App extends React.Component<any, any> {
                                 onClick={e => this.handleClickMenuOption('profile')}
                             >
                                 Profile & Account
+                            </li>
+                            <li
+                                className={this.state.option === 'search' ? 'active' : ''}
+                                onClick={e => this.handleClickMenuOption('search')}
+                            >
+                                Search Users
                             </li>
                         </ul>
                     </nav>
@@ -45,6 +54,9 @@ class App extends React.Component<any, any> {
 
     private authenticateUser(): void {
         const sessionToken = this.getSessionToken();
+        this.setState({
+            sessionToken: sessionToken
+        });
 
         let url;
         if (window.location.hostname === 'info-344.zicodeng.me') {
@@ -152,6 +164,9 @@ class App extends React.Component<any, any> {
                         updateUser={updatedUser => this.updateUser(updatedUser)}
                     />
                 );
+
+            case 'search':
+                return <Search sessionToken={this.state.sessionToken} />;
 
             default:
                 return <h1>{`Howdy, ${this.state.user.firstName}!`}</h1>;
