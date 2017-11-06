@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 # This file will be running on the cloud.
 # Linux machine expects file with LF line endings instead of CRLF.
 # Make sure the file is saved with appropriate line endings.
@@ -8,6 +10,7 @@ export API_CONTAINER=info-344-api
 export REDIS_CONTAINER=redis-server
 export MONGO_CONTAINER=mongo-server
 export APP_NETWORK=appnet
+export DBNAME="info_344"
 
 export TLSCERT=/etc/letsencrypt/live/info-344-api.zicodeng.me/fullchain.pem
 export TLSKEY=/etc/letsencrypt/live/info-344-api.zicodeng.me/privkey.pem
@@ -39,6 +42,9 @@ if [ "$(docker images -q -f dangling=true)" ]; then
     docker rmi $(docker images -q -f dangling=true)
 fi
 
+# Clean up the system.
+docker system prune -f
+
 # Create Docker private network if not exist.
 if ! [ "$(docker network ls | grep $APP_NETWORK)" ]; then
     docker network create $APP_NETWORK
@@ -55,10 +61,11 @@ redis
 # Run Mongo Docker container.
 docker run \
 -d \
+-e MONGO_INITDB_DATABASE=$DBNAME \
 --name mongo-server \
 --network $APP_NETWORK \
 --restart unless-stopped \
-mongo
+drstearns/mongo1kusers
 
 # Run Info 344 API Docker container.
 docker run \
