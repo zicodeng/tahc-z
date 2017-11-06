@@ -14,7 +14,7 @@ class Search extends React.Component<any, any> {
         super(props, context);
 
         this.state = {
-            value: '',
+            query: '',
             suggestions: []
         };
     }
@@ -23,7 +23,12 @@ class Search extends React.Component<any, any> {
         return (
             <div className="search-container">
                 <h3>Search Users</h3>
-                <input type="text" ref="query" onChange={e => this.handleChangeInput()} />
+                <input
+                    type="text"
+                    ref="query"
+                    placeholder="Search by first name, last name, username, or email"
+                    onChange={e => this.handleChangeInput()}
+                />
                 {this.renderSuggestions()}
             </div>
         );
@@ -64,6 +69,7 @@ class Search extends React.Component<any, any> {
                     throw Error(data);
                 }
                 this.setState({
+                    query: query,
                     suggestions: data
                 });
             })
@@ -78,11 +84,36 @@ class Search extends React.Component<any, any> {
             return (
                 <li key={i}>
                     <div style={{ backgroundImage: 'url(' + user.photoURL + ')' }} />
-                    <p>{`${user.firstName} ${user.lastName}`}</p>
+                    <p>
+                        {this.highlightSearch(user.firstName)}
+                        <span> </span>
+                        {this.highlightSearch(user.lastName)}
+                        <span> | </span>
+                        {this.highlightSearch(user.userName)}
+                        <span> | </span>
+                        {this.highlightSearch(user.email)}
+                    </p>
                 </li>
             );
         });
         return <ul className="suggestion-list">{list}</ul>;
+    };
+
+    // Highlight the search query in the displayed suggestions.
+    private highlightSearch = (text: string): JSX.Element => {
+        let query = this.state.query;
+        if (!text.toLowerCase().startsWith(query)) {
+            return <span>{text}</span>;
+        }
+        // Ensure the result is displayed with original case.
+        query = text.substring(0, query.length);
+        const rest = text.substring(query.length, text.length);
+        return (
+            <span>
+                <span className="highlight">{query}</span>
+                <span>{rest}</span>
+            </span>
+        );
     };
 }
 
