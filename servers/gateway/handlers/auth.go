@@ -41,7 +41,10 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 
+		ctx.Trie.Mx.RLock()
 		userIDs := ctx.Trie.Search(20, q)
+		ctx.Trie.Mx.RUnlock()
+
 		results, err = ctx.UserStore.ConvertToUsers(userIDs)
 		if err != nil {
 			http.Error(w, "error converting to users", http.StatusInternalServerError)

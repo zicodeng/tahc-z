@@ -144,9 +144,19 @@ func (root *node) search(n int, results map[bson.ObjectId]bool, totalResults int
 		for _, child := range root.children {
 			branchResults := child.search(n, branchResults, totalResults)
 			for userID := range branchResults {
+				// Before add each user ID to results,
+				// make sure the limit is not reached yet.
+				// If it is already reached, return it.
+				if len(results) == n {
+					return results
+				}
 				results[userID] = true
 			}
 			totalResults = len(results)
+			// Stop exploring branches if the limit is already reached.
+			if totalResults == n {
+				return results
+			}
 		}
 		return results
 	}
