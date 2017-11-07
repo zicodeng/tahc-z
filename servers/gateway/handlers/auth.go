@@ -7,8 +7,10 @@ import (
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/resetcodes"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/users"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/sessions"
+	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"net/smtp"
+	"strings"
 	"time"
 )
 
@@ -41,11 +43,46 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 
+		tokens := strings.Split(q, " ")
+		intersection := make(map[bson.ObjectId]bool)
+
 		ctx.Trie.Mx.RLock()
-		userIDs := ctx.Trie.Search(20, q)
+		switch len(tokens) {
+
+		// Single-token searches.
+		case 1:
+			token := tokens[0]
+			intersection = ctx.Trie.Search(20, token)
+
+		// Multi-token searches.
+		case 2:
+			token1 := tokens[0]
+			token2 := tokens[1]
+
+			userIDList1 := ctx.Trie.Search(1000, token1)
+			userIDList2 := ctx.Trie.Search(1000, token2)
+
+			targetList := userIDList1
+			compareList := userIDList2
+
+			// Ensure to loop through the list that
+			// has fewer elements than the other one.
+			if len(userIDList1) > len(userIDList2) {
+				targetList = userIDList2
+				compareList = userIDList1
+			}
+
+			// Intersect the results to get only the user IDs that were in all of the results.
+			for userID := range targetList {
+				_, hasUserID := compareList[userID]
+				if hasUserID {
+					intersection[userID] = true
+				}
+			}
+		}
 		ctx.Trie.Mx.RUnlock()
 
-		results, err = ctx.UserStore.ConvertToUsers(userIDs)
+		results, err = ctx.UserStore.ConvertToUsers(intersection)
 		if err != nil {
 			http.Error(w, "error converting to users", http.StatusInternalServerError)
 			return
