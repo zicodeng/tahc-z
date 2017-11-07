@@ -102,18 +102,21 @@ class Search extends React.Component<any, any> {
     // Highlight the search query in the displayed suggestions.
     private highlightSearch = (text: string): JSX.Element => {
         let query = this.state.query;
-        if (!text.toLowerCase().startsWith(query)) {
-            return <span>{text}</span>;
+        const tokens: string[] = query.split(' ');
+        for (const token of tokens) {
+            if (text.toLowerCase().startsWith(token)) {
+                // Ensure the result is displayed with original case.
+                const highlightToken = text.substring(0, token.length);
+                const rest = text.substring(token.length, text.length);
+                return (
+                    <span>
+                        <span className="highlight">{highlightToken}</span>
+                        <span>{rest}</span>
+                    </span>
+                );
+            }
         }
-        // Ensure the result is displayed with original case.
-        query = text.substring(0, query.length);
-        const rest = text.substring(query.length, text.length);
-        return (
-            <span>
-                <span className="highlight">{query}</span>
-                <span>{rest}</span>
-            </span>
-        );
+        return <span>{text}</span>;
     };
 }
 
