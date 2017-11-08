@@ -10,6 +10,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"net/smtp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -87,6 +88,10 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "error converting to users", http.StatusInternalServerError)
 			return
 		}
+
+		sort.Slice(results, func(i, j int) bool {
+			return results[i].ID < results[j].ID
+		})
 
 		w.Header().Add(headerContentType, contentTypeJSON)
 		err = json.NewEncoder(w).Encode(results)

@@ -2,6 +2,7 @@ package indexes
 
 import (
 	"gopkg.in/mgo.v2/bson"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -141,8 +142,16 @@ func (root *node) search(n int, results map[bson.ObjectId]bool, totalResults int
 	// Explore all child nodes.
 	if len(root.children) > 0 {
 		branchResults := make(map[bson.ObjectId]bool)
-		for _, child := range root.children {
-			branchResults := child.search(n, branchResults, totalResults)
+		sortedChars := []rune{}
+		for char := range root.children {
+			sortedChars = append(sortedChars, char)
+		}
+		sort.Slice(sortedChars, func(i, j int) bool {
+			return sortedChars[i] < sortedChars[j]
+		})
+
+		for _, char := range sortedChars {
+			branchResults := root.children[char].search(n, branchResults, totalResults)
 			for userID := range branchResults {
 				// Before add each user ID to results,
 				// make sure the limit is not reached yet.
