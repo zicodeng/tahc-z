@@ -1,5 +1,13 @@
 package handlers
 
-//TODO: define a session state struct for this web server
-//see the assignment description for the fields you should include
-//remember that other packages can only see exported fields!
+import (
+	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/users"
+	"time"
+)
+
+// SessionState represents session state for an authenticated user.
+type SessionState struct {
+	// Time struct should be passed as value not pointer.
+	BeginTime time.Time
+	User      *users.User
+}

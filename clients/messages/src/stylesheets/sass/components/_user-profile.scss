@@ -1,0 +1,63 @@
+.profile-card {
+    background-color: $blue;
+    padding-top: 150px;
+    overflow: hidden;
+    margin: 100px 0;
+    box-shadow: $card-shadow;
+    @include border-radius(5px);
+    @include respond-to($bp-lg) {
+        margin: 0;
+    }
+}
+
+.user-info {
+    position: relative;
+    padding: 0 100px 40px;
+    background-color: white;
+    .user-photo {
+        position: absolute;
+        left: 50%;
+        height: 150px;
+        width: 150px;
+        background-size: cover;
+        background-repeat: no-repeat;
+        border: 10px solid white;
+        @include border-radius(150px);
+        @include transform(translate(-50%, -50%));
+    }
+    .username {
+        padding-top: 80px;
+    }
+}
+
+.profile-form {
+    >div {
+        margin: 20px 0;
+        >label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        >input {
+            width: 300px;
+            display: block;
+            padding: 5px;
+            cursor: not-allowed;
+            &.edit {
+                cursor: auto;
+            }
+        }
+    }
+    button {
+        width: 200px;
+        background-color: $blue;
+        color: white;
+        padding: 15px 20px;
+        transition: all .2s ease-in-out;
+        cursor: pointer;
+        display: block;
+        margin: 50px auto 0;
+        &:hover {
+            background-color: $dark-blue;
+        }
+    }
+}
