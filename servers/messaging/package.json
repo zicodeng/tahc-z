@@ -1,16 +1,17 @@
 {
-  "name": "messaging",
-  "version": "1.0.0",
-  "description": "This directory contains the source code for your messaging microservice written in Node.js",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Zico Deng",
-  "license": "ISC",
-  "devDependencies": {
-    "express": "^4.16.2",
-    "jest": "^21.2.1",
-    "mongodb": "^2.2.33"
-  }
+    "name": "messaging",
+    "version": "1.0.0",
+    "description":
+        "This directory contains the source code for your messaging microservice written in Node.js",
+    "main": "index.js",
+    "scripts": {
+        "test": "jest --color"
+    },
+    "author": "Zico Deng",
+    "license": "ISC",
+    "devDependencies": {
+        "express": "^4.16.2",
+        "jest": "^21.2.1",
+        "mongodb": "^2.2.33"
+    }
 }

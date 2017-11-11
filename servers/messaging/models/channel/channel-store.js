@@ -18,7 +18,7 @@ class ChannelStore {
         return this.collection.findOne({ _id: id });
     }
 
-    // getAll() retrieves all channel objects from MongDB.
+    // getAll() retrieves all channel objects from MongoDB.
     getAll() {
         return this.collection
             .find({})
