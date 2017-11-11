@@ -1,5 +1,5 @@
 // @ts-check
-'user strict';
+'use strict';
 
 const mongodb = require('mongodb');
 const mongoAddr = process.env.DBADDR || '192.168.99.100:27017';
