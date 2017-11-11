@@ -88,7 +88,7 @@ func GetState(r *http.Request, signingKey string, store Store, sessionState inte
 	// Get the data associated with that SessionID from the store.
 	err = store.Get(sessionID, sessionState)
 	if err != nil {
-		return sessionID, ErrStateNotFound
+		return sessionID, err
 	}
 
 	return sessionID, nil

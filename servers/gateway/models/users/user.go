@@ -92,6 +92,7 @@ func (nu *NewUser) ToUser() (*User, error) {
 
 	// Construct a User based on NewUser.
 	usr := &User{
+		ID:        bson.NewObjectId(),
 		UserName:  nu.UserName,
 		FirstName: nu.FirstName,
 		LastName:  nu.LastName,
@@ -116,10 +117,6 @@ func (nu *NewUser) ToUser() (*User, error) {
 	photoURL := gravatarBasePhotoURL + result
 	usr.PhotoURL = photoURL
 
-	// Set the ID field of the new User
-	// to a new bson ObjectId.
-	usr.ID = bson.NewObjectId()
-
 	// Call .SetPassword() to set the PassHash
 	// field of the User to a hash of the NewUser.Password.
 	err := usr.SetPassword(nu.Password)
@@ -135,21 +132,7 @@ func (nu *NewUser) ToUser() (*User, error) {
 // If either first or last name is an empty string, no
 // space is put betweeen the names.
 func (u *User) FullName() string {
-	fullName := ""
-
-	if len(u.FirstName) > 0 {
-		fullName += u.FirstName
-	}
-
-	if len(u.FirstName) > 0 && len(u.LastName) > 0 {
-		fullName += " "
-	}
-
-	if len(u.LastName) > 0 {
-		fullName += u.LastName
-	}
-
-	return fullName
+	return strings.TrimSpace(u.FirstName + " " + u.LastName)
 }
 
 // SetPassword hashes the password and stores it in the PassHash field.
