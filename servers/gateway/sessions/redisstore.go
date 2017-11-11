@@ -65,6 +65,7 @@ func (rs *RedisStore) Get(sid SessionID, sessionState interface{}) error {
 	// package to do both the get and the reset of the expiry time
 	// in just one network round trip.
 	pipe := rs.Client.Pipeline()
+	defer pipe.Close()
 
 	// get is a string command that retrieves the previously-saved session state
 	// for a given key from redis.
@@ -73,16 +74,25 @@ func (rs *RedisStore) Get(sid SessionID, sessionState interface{}) error {
 
 	// Reset the expiry time, so that it doesn't get deleted until
 	// the SessionDuration has elapsed.
-	pipe.Expire(sid.getRedisKey(), rs.SessionDuration)
+	expire := pipe.Expire(sid.getRedisKey(), rs.SessionDuration)
 
 	// Execute all previously queued commands using one client-server roundtrip.
-	_, err := pipe.Exec()
+	pipe.Exec()
+
+	// Handle errors that might be returned from
+	// previously executed commands.
+
+	// Extract session state data from get command.
+	// If fails to get, return ErrStateNotFound.
+	val, err := get.Bytes()
 	if err != nil {
 		return ErrStateNotFound
 	}
 
-	// Extract session state data from get command.
-	val, err := get.Bytes()
+	err = expire.Err()
+	if err != nil {
+		return fmt.Errorf("error setting expiry time: %v", err)
+	}
 
 	// Unmarshal it back into the `sessionState` parameter.
 	err = json.Unmarshal(val, sessionState)
