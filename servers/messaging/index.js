@@ -12,6 +12,7 @@ const app = express();
 const morgan = require('morgan');
 
 const ChannelHandler = require('./handlers/channels');
+const MessageHandler = require('./handlers/messages');
 
 const addr = process.env.ADDR || 'localhost:4000';
 const [host, port] = addr.split(':');
@@ -46,6 +47,7 @@ mongodb.MongoClient
 
         // API resource handlers.
         app.use(ChannelHandler(channelStore, messageStore));
+        app.use(MessageHandler(messageStore));
 
         // Error handler.
         app.use((err, req, res, next) => {
