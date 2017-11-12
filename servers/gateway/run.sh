@@ -6,7 +6,7 @@ set -e
 # Linux machine expects file with LF line endings instead of CRLF.
 # Make sure the file is saved with appropriate line endings.
 
-export GATEWAY_CONTAINER=info-344-api
+export GATEWAY_CONTAINER=info-344-gateway
 export REDIS_CONTAINER=redis-server
 export MONGO_CONTAINER=mongo-server
 
@@ -27,7 +27,7 @@ export MESSAGESVCADDR=info-344-messaging:80
 export SUMMARYSVCADDR=info-344-summary:80
 
 # Make sure to get the latest image.
-docker pull zicodeng/info-344-api
+docker pull zicodeng/$GATEWAY_CONTAINER
 
 # Remove the old containers first.
 if [ "$(docker ps -aq --filter name=$GATEWAY_CONTAINER)" ]; then
@@ -76,7 +76,7 @@ drstearns/mongo1kusers
 docker run \
 -d \
 -p 443:443 \
---name info-344-api \
+--name $GATEWAY_CONTAINER \
 --network $APP_NETWORK \
 -v /etc/letsencrypt:/etc/letsencrypt:ro \
 -e TLSCERT=$TLSCERT \
@@ -85,5 +85,7 @@ docker run \
 -e ADDR=$ADDR \
 -e REDISADDR=$REDISADDR \
 -e DBADDR=$DBADDR \
+-e MESSAGESVCADDR=$MESSAGESVCADDR \
+-e SUMMARYSVCADDR=$SUMMARYSVCADDR \
 --restart unless-stopped \
 zicodeng/$GATEWAY_CONTAINER
