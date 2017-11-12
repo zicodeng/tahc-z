@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/go-redis/redis"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/handlers"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/attempts"
@@ -10,7 +11,10 @@ import (
 	"gopkg.in/mgo.v2"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"os"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -77,6 +81,13 @@ func main() {
 	// Initialize HandlerContext.
 	ctx := handlers.NewHandlerContext(sessionKey, trie, sessionStore, userStore, attemptStore, resetCodeStore)
 
+	// Microservice addresses.
+	msgAddrs := os.Getenv("MESSAGESVCADDR")
+	if len(msgAddrs) == 0 {
+		log.Fatal("Please set MESSAGESVCADDR environment variables")
+	}
+	msgAddrSlice := strings.Split(msgAddrs, ",")
+
 	// Create a new mux for the web server.
 	mux := http.NewServeMux()
 
@@ -93,6 +104,10 @@ func main() {
 	mux.HandleFunc("/v1/resetcodes", ctx.ResetCodesHandler)
 	mux.HandleFunc("/v1/passwords", ctx.ResetPasswordHandler)
 
+	// Messaging microservice.
+	mux.Handle("/v1/channels", newServiceProxy(msgAddrSlice, ctx))
+	mux.Handle("/v1/messages", newServiceProxy(msgAddrSlice, ctx))
+
 	// Wraps mux inside CORSHandler.
 	corsMux := handlers.NewCORSHandler(mux)
 
@@ -102,4 +117,35 @@ func main() {
 	// that occur when trying to start the web server.
 	log.Printf("Server is listening at https://%s\n", addr)
 	log.Fatal(http.ListenAndServeTLS(addr, tlscert, tlskey, corsMux))
+}
+
+func newServiceProxy(addrs []string, ctx *handlers.HandlerContext) *httputil.ReverseProxy {
+	i := 0
+	mutex := sync.Mutex{}
+	return &httputil.ReverseProxy{
+		Director: func(r *http.Request) {
+			user := getCurrentUser(r, ctx)
+			if user != nil {
+				userJSON, err := json.Marshal(user)
+				if err != nil {
+					log.Printf("error marshaling user: %v", err)
+				}
+				r.Header.Add("X-User", string(userJSON))
+			}
+			mutex.Lock()
+			r.URL.Host = addrs[i%len(addrs)]
+			i++
+			mutex.Unlock()
+			r.URL.Scheme = "http"
+		},
+	}
+}
+
+func getCurrentUser(r *http.Request, ctx *handlers.HandlerContext) *users.User {
+	sessionState := &handlers.SessionState{}
+	_, err := sessions.GetState(r, ctx.SigningKey, ctx.SessionStore, sessionState)
+	if err != nil {
+		return nil
+	}
+	return sessionState.User
 }
