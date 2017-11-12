@@ -19,12 +19,12 @@ describe('Mongo Message Store', () => {
 
             return store
                 .insert(message1)
-                .then(message => {
-                    expect(message._id).toBeDefined();
+                .then(newMessage => {
+                    expect(newMessage._id).toBeDefined();
                     return store.insert(message2);
                 })
-                .then(message => {
-                    expect(message._id).toBeDefined();
+                .then(newMessage => {
+                    expect(newMessage._id).toBeDefined();
                 })
                 .then(() => {
                     return store.getAll(channelID);
@@ -35,8 +35,8 @@ describe('Mongo Message Store', () => {
                     expect(messages[1]).toEqual(message2);
                     return message1._id;
                 })
-                .then(messageID => {
-                    return store.get(messageID);
+                .then(message1ID => {
+                    return store.get(message1ID);
                 })
                 .then(fetchedMessage => {
                     expect(fetchedMessage).toEqual(message1);
