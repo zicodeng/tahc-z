@@ -27,7 +27,6 @@ const ChannelHandler = (channelStore, messageStore) => {
 
     // Create a new channel.
     router.post('/v1/channels', (req, res) => {
-        console.log('creating new channel');
         const name = req.body.name;
         if (!name) {
             res.set('Content-Type', 'text/plain');
