@@ -30,13 +30,19 @@ const ChannelHandler = (channelStore, messageStore) => {
         const name = req.body.name;
         if (!name) {
             res.set('Content-Type', 'text/plain');
-            res.status(400).send('no channel name found in the request');
+            res.status(400);
+            throw new Error('no channel name found in the request');
         }
+
         let description = '';
         if (req.body.description) {
             description = req.body.description;
         }
-        const channel = new Channel(name, description, 'Default');
+
+        const userJSON = req.get('X-User');
+        const user = JSON.parse(userJSON);
+        const channel = new Channel(name, description, user.userName);
+
         channelStore
             .insert(channel)
             .then(channel => {
@@ -86,7 +92,8 @@ const ChannelHandler = (channelStore, messageStore) => {
                 // respond with the status code 403 (Forbidden).
                 if (channel.creator !== user.userName) {
                     res.set('Content-Type', 'text/plain');
-                    res.status(403).send('only channel creator can modify this channel');
+                    res.status(403);
+                    throw new Error('only channel creator can modify this channel');
                 }
                 return;
             })
@@ -119,7 +126,8 @@ const ChannelHandler = (channelStore, messageStore) => {
             .then(channel => {
                 if (channel.creator !== user.userName) {
                     res.set('Content-Type', 'text/plain');
-                    res.status(403).send('only channel creator can delete this channel');
+                    res.status(403);
+                    throw new Error('only channel creator can delete this channel');
                 }
                 return;
             })

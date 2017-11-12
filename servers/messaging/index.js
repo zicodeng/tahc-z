@@ -32,10 +32,10 @@ mongodb.MongoClient
         // respond immediately with the status code 401 (Unauthorized).
         app.use((req, res, next) => {
             const userJSON = req.get('X-User');
-            // if (!userJSON) {
-            //     res.set('Content-Type', 'text/plain');
-            //     res.status(401).send('no X-User header in the request');
-            // }
+            if (!userJSON) {
+                res.status(401);
+                throw new Error('no X-User header found in the request');
+            }
             // Invoke next chained handler if the user is authenticated.
             next();
         });
@@ -53,10 +53,12 @@ mongodb.MongoClient
             // which writes to the server's log.
             console.error(err.stack);
 
-            // But only report the error message
-            // to the client, with a 500 status code.
+            // But only report the error message to the client.
             res.set('Content-Type', 'text/plain');
-            res.status(500).send(err.message);
+            if (res.statusCode === 200) {
+                res.status(500);
+            }
+            res.send(err.message);
         });
 
         app.listen(portNum, host, () => {
