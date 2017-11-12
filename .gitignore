@@ -1,6 +1,7 @@
 node_modules
 dist
 tls
+coverage
 
 .DS_Store
 .vscode

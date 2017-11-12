@@ -51,11 +51,18 @@ describe('Mongo Message Store', () => {
                     // Delete message2.
                     return store.delete(message2._id);
                 })
-                .then(deletedMessage => {
-                    return store.get(deletedMessage._id);
+                .then(() => {
+                    return store.get(message2._id);
                 })
                 .then(fetchedMessage => {
                     expect(fetchedMessage).toBeFalsy();
+                    return store.deleteAll(channelID);
+                })
+                .then(() => {
+                    return store.getAll(channelID);
+                })
+                .then(messages => {
+                    expect(messages.length).toBe(0);
                 })
                 .then(() => {
                     // If everything went well and all tests passed,

@@ -1,10 +1,11 @@
 {
     "name": "messaging",
     "version": "1.0.0",
-    "description": "This directory contains the source code for your messaging microservice written in Node.js",
+    "description":
+        "This directory contains the source code for your messaging microservice written in Node.js",
     "main": "index.js",
     "scripts": {
-        "test": "jest --color"
+        "test": "jest --color --coverage"
     },
     "author": "Zico Deng",
     "license": "ISC",

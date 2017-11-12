@@ -7,18 +7,18 @@ class ChannelStore {
         this.collection = db.collection(colName);
     }
 
-    // insert() creates a new channel object in MongoDB.
+    // insert() creates a new channel in MongoDB.
     insert(channel) {
         channel._id = new mongodb.ObjectID();
         return this.collection.insertOne(channel).then(() => channel);
     }
 
-    // get() retrieves one channel object from MongoDB for a given channel ID.
+    // get() retrieves one channel from MongoDB for a given channel ID.
     get(id) {
         return this.collection.findOne({ _id: id });
     }
 
-    // getAll() retrieves all channel objects from MongoDB.
+    // getAll() retrieves all channel from MongoDB.
     getAll() {
         return this.collection
             .find({})
@@ -26,8 +26,8 @@ class ChannelStore {
             .toArray();
     }
 
-    // update() updates a channel object for a given channel ID.
-    // It returns the updated channel object.
+    // update() updates a channel for a given channel ID.
+    // It returns the updated channel.
     update(id, updates) {
         let updateDoc = {
             $set: updates
@@ -39,7 +39,7 @@ class ChannelStore {
             });
     }
 
-    // delete() deletes a channel object for a given channel ID.
+    // delete() deletes a channel for a given channel ID.
     delete(id) {
         return this.collection.deleteOne({ _id: id });
     }

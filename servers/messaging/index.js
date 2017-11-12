@@ -11,6 +11,8 @@ const express = require('express');
 const app = express();
 const morgan = require('morgan');
 
+const ChannelHandler = require('./handlers/channels');
+
 const addr = process.env.ADDR || 'localhost:4000';
 const [host, port] = addr.split(':');
 const portNum = parseInt(port);
@@ -19,9 +21,6 @@ const portNum = parseInt(port);
 mongodb.MongoClient
     .connect(mongoURL)
     .then(db => {
-        let channelStore = new ChannelStore(db, 'channels');
-        let messageStore = new ChannelStore(db, 'messages');
-
         // Add global middlewares.
         app.use(morgan(process.env.LOG_FORMAT || 'dev'));
         // Parses posted JSON and makes
@@ -31,17 +30,22 @@ mongodb.MongoClient
         // All of the following APIs require the user to be authenticated.
         // If the user is not authenticated,
         // respond immediately with the status code 401 (Unauthorized).
-        app.use('/', (req, res, next) => {
-            const user = req.get('X-User');
-            if (!user) {
-                res.set('Content-Type', 'text/plain');
-                res.status(401).send('no X-User header in the request');
-            }
+        app.use((req, res, next) => {
+            const userJSON = req.get('X-User');
+            // if (!userJSON) {
+            //     res.set('Content-Type', 'text/plain');
+            //     res.status(401).send('no X-User header in the request');
+            // }
             // Invoke next chained handler if the user is authenticated.
             next();
         });
 
+        // Initialize Mongo stores.
+        let channelStore = new ChannelStore(db, 'channels');
+        let messageStore = new MessageStore(db, 'messages');
+
         // API resource handlers.
+        app.use(ChannelHandler(channelStore, messageStore));
 
         // Error handler.
         app.use((err, req, res, next) => {
