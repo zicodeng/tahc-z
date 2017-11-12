@@ -27,6 +27,7 @@ const ChannelHandler = (channelStore, messageStore) => {
 
     // Create a new channel.
     router.post('/v1/channels', (req, res) => {
+        console.log('creating new channel');
         const name = req.body.name;
         if (!name) {
             res.set('Content-Type', 'text/plain');
@@ -41,7 +42,7 @@ const ChannelHandler = (channelStore, messageStore) => {
 
         const userJSON = req.get('X-User');
         const user = JSON.parse(userJSON);
-        const channel = new Channel(name, description, user.userName);
+        const channel = new Channel(name, description, user);
 
         channelStore
             .insert(channel)
@@ -68,8 +69,10 @@ const ChannelHandler = (channelStore, messageStore) => {
 
     // Create a new message in this channel.
     router.post('/v1/channels/:channelID', (req, res) => {
+        const userJSON = req.get('X-User');
+        const user = JSON.parse(userJSON);
         const channelID = new mongodb.ObjectID(req.params.channelID);
-        const message = new Message(channelID, req.body.body, 'Default');
+        const message = new Message(channelID, req.body.body, user);
         messageStore
             .insert(message)
             .then(newMessage => {
@@ -90,7 +93,7 @@ const ChannelHandler = (channelStore, messageStore) => {
             .then(channel => {
                 // If the current user isn't the creator,
                 // respond with the status code 403 (Forbidden).
-                if (channel.creator !== user.userName) {
+                if (channel.creator.id !== user.id) {
                     res.set('Content-Type', 'text/plain');
                     res.status(403);
                     throw new Error('only channel creator can modify this channel');
@@ -124,7 +127,7 @@ const ChannelHandler = (channelStore, messageStore) => {
         channelStore
             .get(channelID)
             .then(channel => {
-                if (channel.creator !== user.userName) {
+                if (channel.creator.id !== user.id) {
                     res.set('Content-Type', 'text/plain');
                     res.status(403);
                     throw new Error('only channel creator can delete this channel');
