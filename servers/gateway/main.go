@@ -81,20 +81,24 @@ func main() {
 	// Initialize HandlerContext.
 	ctx := handlers.NewHandlerContext(sessionKey, trie, sessionStore, userStore, attemptStore, resetCodeStore)
 
-	// Microservice addresses.
+	// Messaging microservice addresses.
 	msgAddrs := os.Getenv("MESSAGESVCADDR")
 	if len(msgAddrs) == 0 {
 		log.Fatal("Please set MESSAGESVCADDR environment variables")
 	}
 	msgAddrSlice := strings.Split(msgAddrs, ",")
 
+	// Summary microservice addresses.
+	sumAddrs := os.Getenv("SUMMARYSVCADDR")
+	if len(sumAddrs) == 0 {
+		log.Fatal("Please set SUMMARYSVCADDR environment variables")
+	}
+	sumAddrSlice := strings.Split(sumAddrs, ",")
+
 	// Create a new mux for the web server.
 	mux := http.NewServeMux()
 
-	// Tell the mux to call your handlers.SummaryHandler function
-	// when the "/v1/summary" URL path is requested.
-	mux.HandleFunc("/v1/summary", handlers.SummaryHandler)
-
+	// Gateway
 	mux.HandleFunc("/v1/users", ctx.UsersHandler)
 	mux.HandleFunc("/v1/users/me", ctx.UsersMeHandler)
 
@@ -108,6 +112,9 @@ func main() {
 	mux.Handle("/v1/channels", newServiceProxy(msgAddrSlice, ctx))
 	mux.Handle("/v1/channels/", newServiceProxy(msgAddrSlice, ctx))
 	mux.Handle("/v1/messages/", newServiceProxy(msgAddrSlice, ctx))
+
+	// Summary microservice.
+	mux.Handle("/v1/summary", newServiceProxy(sumAddrSlice, ctx))
 
 	// Wraps mux inside CORSHandler.
 	corsMux := handlers.NewCORSHandler(mux)

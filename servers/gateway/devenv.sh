@@ -13,3 +13,4 @@ export DBADDR=192.168.99.100:27017
 export DBNAME="info_344"
 
 export MESSAGESVCADDR=localhost:4000
+export SUMMARYSVCADDR=localhost:5000
