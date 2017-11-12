@@ -107,6 +107,7 @@ const ChannelHandler = (channelStore, messageStore) => {
                 if (req.body.description) {
                     updates.description = req.body.description;
                 }
+                updates.editedAt = Date.now();
                 return channelStore.update(channelID, updates);
             })
             .then(updatedChannel => {

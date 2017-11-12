@@ -30,7 +30,8 @@ const MessageHandler = messageStore => {
             })
             .then(() => {
                 const updates = {
-                    body: req.body.body
+                    body: req.body.body,
+                    editedAt: Date.now()
                 };
                 return messageStore.update(messageID, updates);
             })
