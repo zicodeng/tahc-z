@@ -106,7 +106,8 @@ func main() {
 
 	// Messaging microservice.
 	mux.Handle("/v1/channels", newServiceProxy(msgAddrSlice, ctx))
-	mux.Handle("/v1/messages", newServiceProxy(msgAddrSlice, ctx))
+	mux.Handle("/v1/channels/", newServiceProxy(msgAddrSlice, ctx))
+	mux.Handle("/v1/messages/", newServiceProxy(msgAddrSlice, ctx))
 
 	// Wraps mux inside CORSHandler.
 	corsMux := handlers.NewCORSHandler(mux)
