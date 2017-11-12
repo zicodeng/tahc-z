@@ -11,8 +11,8 @@ const express = require('express');
 const app = express();
 const morgan = require('morgan');
 
-const ChannelHandler = require('./handlers/channels');
-const MessageHandler = require('./handlers/messages');
+const ChannelHandler = require('./handlers/channel');
+const MessageHandler = require('./handlers/message');
 
 const addr = process.env.ADDR || 'localhost:4000';
 const [host, port] = addr.split(':');
