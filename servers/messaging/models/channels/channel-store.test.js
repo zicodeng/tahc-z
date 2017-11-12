@@ -13,13 +13,7 @@ describe('Mongo Channel Store', () => {
             let store = new ChannelStore(db, 'channels');
 
             // Create a new Channel.
-            let channel = new Channel(
-                'General',
-                'test general channel',
-                Date.now(),
-                'Zico Deng',
-                Date.now()
-            );
+            let channel = new Channel('General', 'test general channel', 'Zico Deng');
 
             return store
                 .insert(channel)

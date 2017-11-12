@@ -1,19 +1,24 @@
 'use strict';
 
 class Channel {
-    // Parameter explanation:
-    // name: unique channel name.
-    // description: a short description of the channel.
-    // createdAt: date/time the channel was created.
-    // creator: copy of the entire profile of the user who created this channel.
-    // editedAt: date/time the channel's properties were last edited.
-    // Note: channel object has another property _id, which will be created
-    // when we insert it to MongoDB.
-    constructor(name, description, createdAt, creator, editedAt) {
+    constructor(name, description, creator) {
+        // Unique channel name.
         this.name = name;
+
+        // Description: a short description of the channel.
         this.description = description;
-        this.createdAt = createdAt;
-        this.creator = editedAt;
+
+        // Copy of the entire profile of the user who created this channel.
+        this.creator = creator;
+
+        // Date/time the channel was created.
+        this.createdAt = Date.now();
+
+        // Date/time the channel's properties were last edited.
+        this.editedAt = Date.now();
+
+        // Note: channel object has another property _id, which will be created
+        // when we insert it to MongoDB.
     }
 }
 

@@ -14,8 +14,8 @@ describe('Mongo Message Store', () => {
 
             const channelID = new mongodb.ObjectID('5a07634f29a1b43820d21e64');
             // Create new message objects.
-            const message1 = new Message(channelID, 'Hello!', Date.now(), 'Zico Deng', Date.now());
-            const message2 = new Message(channelID, 'Hola!', Date.now(), 'Zico Deng', Date.now());
+            const message1 = new Message(channelID, 'Hello!', 'Zico Deng');
+            const message2 = new Message(channelID, 'Hola!', 'Zico Deng');
 
             return store
                 .insert(message1)
