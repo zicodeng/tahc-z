@@ -25,6 +25,7 @@ docker run \
 -d \
 -e ADDR=:80 \
 -e DBADDR=mongo-server:27017 \
+-e SUMMARYSVCADDR=info-344-summary:80 \
 --name $MESSAGING_CONTAINER \
 --network $APP_NETWORK \
 --restart unless-stopped \

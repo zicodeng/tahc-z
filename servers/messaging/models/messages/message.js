@@ -17,6 +17,8 @@ class Message {
         // Date/time the message body was last edited.
         this.editedAt = Date.now();
 
+        this.summaries = [];
+
         // Note: message object has another property _id, which will be created
         // when we insert it to MongoDB.
     }

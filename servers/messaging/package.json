@@ -1,8 +1,7 @@
 {
     "name": "messaging",
     "version": "1.0.0",
-    "description":
-        "This directory contains the source code for your messaging microservice written in Node.js",
+    "description": "This directory contains the source code for your messaging microservice written in Node.js",
     "main": "index.js",
     "scripts": {
         "test": "jest --color --coverage"
@@ -14,5 +13,9 @@
         "jest": "^21.2.1",
         "mongodb": "^2.2.33",
         "morgan": "^1.9.0"
+    },
+    "dependencies": {
+        "axios": "^0.17.1",
+        "get-urls": "^7.0.0"
     }
 }

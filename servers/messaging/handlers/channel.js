@@ -6,6 +6,9 @@ const express = require('express');
 const Channel = require('./../models/channels/channel');
 const Message = require('./../models/messages/message');
 
+const getUrls = require('get-urls');
+const axios = require('axios');
+
 const ChannelHandler = (channelStore, messageStore) => {
     if (!channelStore || !messageStore) {
         throw new Error('no channel and/or message store found');
@@ -71,9 +74,36 @@ const ChannelHandler = (channelStore, messageStore) => {
         const userJSON = req.get('X-User');
         const user = JSON.parse(userJSON);
         const channelID = new mongodb.ObjectID(req.params.channelID);
-        const message = new Message(channelID, req.body.body, user);
-        messageStore
-            .insert(message)
+        const messageBody = req.body.body;
+        const message = new Message(channelID, messageBody, user);
+
+        // Get any URLs embeded in the message body.
+        const URLs = getUrls(messageBody);
+
+        // For each URL, construct an axios.get() promise
+        // and push it to promises array
+        // which will be consumed by axios.all() as concurrent requests.
+        const promises = [];
+        if (URLs.size > 0) {
+            const summarySvcAddr =
+                'http://' + process.env.SUMMARYSVCADDR || 'http://localhost:5000';
+            for (let URL of URLs) {
+                let reqURL = summarySvcAddr + '/v1/summary?url=' + URL;
+                promises.push(axios.get(reqURL));
+            }
+        }
+
+        axios
+            .all(promises)
+            .then(results => {
+                results.map(res => {
+                    message.summaries.push(res.data);
+                });
+                return;
+            })
+            .then(() => {
+                return messageStore.insert(message);
+            })
             .then(newMessage => {
                 res.json(newMessage);
             })
