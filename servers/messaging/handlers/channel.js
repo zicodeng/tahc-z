@@ -119,9 +119,14 @@ const ChannelHandler = (channelStore, messageStore) => {
         channelStore
             .get(channelID)
             .then(channel => {
+                if (!channel) {
+                    res.set('Content-Type', 'text/plain');
+                    res.status(400);
+                    throw new Error('no such channel found');
+                }
                 // If the current user isn't the creator,
                 // respond with the status code 403 (Forbidden).
-                if (channel.creator.id !== user.id) {
+                if (!channel.creator || channel.creator.id !== user.id) {
                     res.set('Content-Type', 'text/plain');
                     res.status(403);
                     throw new Error('only channel creator can modify this channel');
@@ -143,20 +148,26 @@ const ChannelHandler = (channelStore, messageStore) => {
                 res.json(updatedChannel);
             })
             .catch(err => {
-                throw err;
+                console.log(err.stack);
+                res.send(err.message);
             });
     });
 
     // If the current user created the channel, delete it and all messages related to it.
     // If the current user isn't the creator, respond with the status code 403 (Forbidden).
-    router.delete('/v1/channels/:channelID', (req, res) => {
+    router.delete('/v1/channels/:channelID', (req, res, next) => {
         const userJSON = req.get('X-User');
         const user = JSON.parse(userJSON);
         const channelID = new mongodb.ObjectID(req.params.channelID);
         channelStore
             .get(channelID)
             .then(channel => {
-                if (channel.creator.id !== user.id) {
+                if (!channel) {
+                    res.set('Content-Type', 'text/plain');
+                    res.status(400);
+                    throw new Error('no such channel found');
+                }
+                if (!channel.creator || channel.creator.id !== user.id) {
                     res.set('Content-Type', 'text/plain');
                     res.status(403);
                     throw new Error('only channel creator can delete this channel');
@@ -174,7 +185,8 @@ const ChannelHandler = (channelStore, messageStore) => {
                 res.status(200).send('channel deleted');
             })
             .catch(err => {
-                throw err;
+                console.log(err.stack);
+                res.send(err.message);
             });
     });
 

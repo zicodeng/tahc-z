@@ -153,8 +153,8 @@ func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) 
 		if err != nil {
 			log.Printf("error unmarshalling received microservice JSON to struct: %v", err)
 		}
-		_, hasSvc := serviceList.Services[svc.Name]
 		serviceList.Mx.Lock()
+		_, hasSvc := serviceList.Services[svc.Name]
 		// If this microservice is already in our list...
 		if hasSvc {
 			// Check if this specific microservice instance exists in our list by its unique address...
@@ -189,7 +189,7 @@ func removeCrashedServices(serviceList *handlers.ServiceList) {
 		for svcName := range serviceList.Services {
 			svc := serviceList.Services[svcName]
 			for addr, instance := range svc.Instances {
-				if time.Now().Sub(instance.LastHeartbeat).Seconds() > float64(svc.Heartbeat) {
+				if time.Now().Sub(instance.LastHeartbeat).Seconds() > float64(svc.Heartbeat)+10 {
 					// Remove the crashed microservice instance from the service list.
 					delete(svc.Instances, addr)
 					// Remove the entire microservice from the service list

@@ -39,7 +39,8 @@ const MessageHandler = messageStore => {
                 res.json(updatedMessage);
             })
             .catch(err => {
-                throw err;
+                console.log(err.stack);
+                res.send(err.message);
             });
     });
 
@@ -67,7 +68,8 @@ const MessageHandler = messageStore => {
                 res.status(200).send('message deleted');
             })
             .catch(err => {
-                throw err;
+                console.log(err.stack);
+                res.send(err.message);
             });
     });
 
