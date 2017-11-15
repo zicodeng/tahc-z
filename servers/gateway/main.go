@@ -51,7 +51,6 @@ func main() {
 	pubsub := redisClient.Subscribe("microservices")
 
 	serviceList := handlers.NewServiceList()
-	// Listening for microservices.
 	go listenForServices(pubsub, serviceList)
 	// Remove crashed microservices.
 	go removeCrashedServices(serviceList)
@@ -154,7 +153,6 @@ func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) 
 		if err != nil {
 			log.Printf("error unmarshalling received microservice JSON to struct: %v", err)
 		}
-
 		_, hasSvc := serviceList.Services[svc.Name]
 		serviceList.Mx.Lock()
 		// If this microservice is already in our list...
@@ -176,7 +174,7 @@ func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) 
 			// and add to the list.
 			instances := make(map[string]*handlers.ServiceInstance)
 			instances[svc.Address] = handlers.NewServiceInstance(svc.Address, time.Now())
-			serviceList.Services[svc.Name] = handlers.NewService(svc.Name, svc.PathPattern, instances)
+			serviceList.Services[svc.Name] = handlers.NewService(svc.Name, svc.PathPattern, svc.Heartbeat, instances)
 		}
 		serviceList.Mx.Unlock()
 	}
@@ -189,13 +187,14 @@ func removeCrashedServices(serviceList *handlers.ServiceList) {
 	for _ = range time.Tick(time.Second * 10) {
 		serviceList.Mx.Lock()
 		for svcName := range serviceList.Services {
-			for addr, instance := range serviceList.Services[svcName].Instances {
-				if time.Now().Sub(instance.LastHeartbeat).Seconds() > 20 {
+			svc := serviceList.Services[svcName]
+			for addr, instance := range svc.Instances {
+				if time.Now().Sub(instance.LastHeartbeat).Seconds() > float64(svc.Heartbeat) {
 					// Remove the crashed microservice instance from the service list.
-					delete(serviceList.Services[svcName].Instances, addr)
+					delete(svc.Instances, addr)
 					// Remove the entire microservice from the service list
 					// if it has no instance running.
-					if len(serviceList.Services[svcName].Instances) == 0 {
+					if len(svc.Instances) == 0 {
 						delete(serviceList.Services, svcName)
 					}
 				}
@@ -209,4 +208,5 @@ type receivedService struct {
 	Name        string
 	PathPattern string
 	Address     string
+	Heartbeat   int
 }

@@ -33,14 +33,16 @@ mongodb.MongoClient
             host: redisAddr
         });
         const sec = 1000;
+        const heartBeat = 10;
         const msgSvc = {
             name: 'messaging',
             pathPattern: '/v1/(channels|messages)/?',
-            address: addr
+            address: addr,
+            heartbeat: heartBeat
         };
         setInterval(() => {
             publisher.publish('microservices', JSON.stringify(msgSvc));
-        }, 10 * sec);
+        }, 1000 * heartBeat);
 
         // Add global middlewares.
         app.use(morgan(process.env.LOG_FORMAT || 'dev'));

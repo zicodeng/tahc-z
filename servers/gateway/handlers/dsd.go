@@ -30,13 +30,14 @@ func NewServiceList() *ServiceList {
 type Service struct {
 	Name        string
 	PathPattern string
+	Heartbeat   int // The microservice's normal heartbeat.
 	// The key of the Instances map is this instance's unique address.
 	Instances map[string]*ServiceInstance
 }
 
 // NewService creates a new microservice.
-func NewService(name string, pathPattern string, instances map[string]*ServiceInstance) *Service {
-	return &Service{name, pathPattern, instances}
+func NewService(name string, pathPattern string, heartbeat int, instances map[string]*ServiceInstance) *Service {
+	return &Service{name, pathPattern, heartbeat, instances}
 }
 
 // ServiceInstance is an instance of a given microservice.

@@ -41,6 +41,7 @@ type summaryService struct {
 	Name        string
 	PathPattern string
 	Address     string
+	Heartbeat   int
 }
 
 // publishes information about this microservice to Redis Pub/Sub.
@@ -49,6 +50,7 @@ func publishService(addr string, redisClient *redis.Client) {
 		Name:        "summary",
 		PathPattern: "/v1/summary",
 		Address:     addr,
+		Heartbeat:   10,
 	}
 
 	j, err := json.Marshal(sumSvc)
