@@ -14,6 +14,8 @@ const express = require('express');
 const app = express();
 const morgan = require('morgan');
 
+const Channel = require('./models/channels/channel');
+
 const ChannelHandler = require('./handlers/channel');
 const MessageHandler = require('./handlers/message');
 
@@ -66,6 +68,10 @@ mongodb.MongoClient
         // Initialize Mongo stores.
         let channelStore = new ChannelStore(db, 'channels');
         let messageStore = new MessageStore(db, 'messages');
+
+        // Add a default channel named "general".
+        const channel = new Channel('general', '');
+        channelStore.insert(channel);
 
         // API resource handlers.
         app.use(ChannelHandler(channelStore, messageStore));
