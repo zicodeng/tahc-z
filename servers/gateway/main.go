@@ -48,10 +48,13 @@ func main() {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: redisAddr,
 	})
+	pubsub := redisClient.Subscribe("microservices")
 
-	// Listening for microservices.
 	serviceList := handlers.NewServiceList()
-	go listenForServices(redisClient, serviceList)
+	// Listening for microservices.
+	go listenForServices(pubsub, serviceList)
+	// Remove crashed microservices.
+	go removeCrashedServices(serviceList)
 
 	// Redis store for storing SessionState.
 	sessionStore := sessions.NewRedisStore(redisClient, time.Hour)
@@ -109,6 +112,12 @@ func main() {
 	mux.HandleFunc("/v1/resetcodes", ctx.ResetCodesHandler)
 	mux.HandleFunc("/v1/passwords", ctx.ResetPasswordHandler)
 
+	// Hard-code the network addresses where our microservice instances
+	// are listening into environment variables the gateway reads at startup.
+	// This is an easy way to get started,
+	// but it doesn't make it easy to dynamically add
+	// new instances of an existing microservice, or entirely new microservices.
+
 	// Messaging microservice.
 	// mux.Handle("/v1/channels", newServiceProxy(msgAddrSlice, ctx))
 	// mux.Handle("/v1/channels/", newServiceProxy(msgAddrSlice, ctx))
@@ -132,9 +141,10 @@ func main() {
 }
 
 // Constantly listen for "microservices" Redis channel.
-func listenForServices(redisClient *redis.Client, serviceList *handlers.ServiceList) {
-	pubsub := redisClient.Subscribe("microservices")
+func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) {
 	for {
+		time.Sleep(time.Second)
+
 		msg, err := pubsub.ReceiveMessage()
 		if err != nil {
 			log.Println(err)
@@ -145,9 +155,8 @@ func listenForServices(redisClient *redis.Client, serviceList *handlers.ServiceL
 			log.Printf("error unmarshalling received microservice JSON to struct: %v", err)
 		}
 
-		// Add the received microservice instance into our service list.
 		_, hasSvc := serviceList.Services[svc.Name]
-		//  add mutex here
+		serviceList.Mx.Lock()
 		// If this microservice is already in our list...
 		if hasSvc {
 			// Check if this specific microservice instance exists in our list by its unique address...
@@ -169,6 +178,30 @@ func listenForServices(redisClient *redis.Client, serviceList *handlers.ServiceL
 			instances[svc.Address] = handlers.NewServiceInstance(svc.Address, time.Now())
 			serviceList.Services[svc.Name] = handlers.NewService(svc.Name, svc.PathPattern, instances)
 		}
+		serviceList.Mx.Unlock()
+	}
+}
+
+// Periodically looks for service instances
+// for which you haven't received a heartbeat in a while,
+// and remove those instances from your list
+func removeCrashedServices(serviceList *handlers.ServiceList) {
+	for _ = range time.Tick(time.Second * 10) {
+		serviceList.Mx.Lock()
+		for svcName := range serviceList.Services {
+			for addr, instance := range serviceList.Services[svcName].Instances {
+				if time.Now().Sub(instance.LastHeartbeat).Seconds() > 20 {
+					// Remove the crashed microservice instance from the service list.
+					delete(serviceList.Services[svcName].Instances, addr)
+					// Remove the entire microservice from the service list
+					// if it has no instance running.
+					if len(serviceList.Services[svcName].Instances) == 0 {
+						delete(serviceList.Services, svcName)
+					}
+				}
+			}
+		}
+		serviceList.Mx.Unlock()
 	}
 }
 

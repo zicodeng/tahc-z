@@ -71,6 +71,8 @@ func (dsdh *DSDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Use the received microservice path pattern
 	// to determine which microservice should this requset
 	// be forwarded to.
+	dsdh.ServiceList.Mx.RLock()
+	defer dsdh.ServiceList.Mx.RUnlock()
 	for _, svc := range dsdh.ServiceList.Services {
 		pattern := svc.PathPattern
 		re := regexp.MustCompile(pattern)
