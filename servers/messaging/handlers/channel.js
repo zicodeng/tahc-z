@@ -85,8 +85,7 @@ const ChannelHandler = (channelStore, messageStore) => {
         // which will be consumed by axios.all() as concurrent requests.
         const promises = [];
         if (URLs.size > 0) {
-            const summarySvcAddr =
-                'http://' + process.env.SUMMARYSVCADDR || 'http://localhost:5000';
+            const summarySvcAddr = 'http://' + (process.env.SUMMARYSVCADDR || 'localhost:5000');
             for (let URL of URLs) {
                 let reqURL = summarySvcAddr + '/v1/summary?url=' + URL;
                 promises.push(axios.get(reqURL));

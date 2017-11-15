@@ -21,10 +21,13 @@ if ! [ "$(docker network ls | grep $APP_NETWORK)" ]; then
     docker network create $APP_NETWORK
 fi
 
+# No need to specify Redis port here,
+# because it is default to 6379.
 docker run \
 -d \
--e ADDR=:80 \
+-e ADDR=$MESSAGING_CONTAINER:80 \
 -e DBADDR=mongo-server:27017 \
+-e REDISADDR=redis-server \
 -e SUMMARYSVCADDR=info-344-summary:80 \
 --name $MESSAGING_CONTAINER \
 --network $APP_NETWORK \

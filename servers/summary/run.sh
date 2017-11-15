@@ -2,6 +2,9 @@
 
 set -e
 
+export ADDR=info-344-summary:80
+export REDISADDR=redis-server:6379
+
 export SUMMARY_CONTAINER=info-344-summary
 export APP_NETWORK=appnet
 
@@ -23,6 +26,8 @@ fi
 
 docker run \
 -d \
+-e ADDR=$ADDR \
+-e REDISADDR=$REDISADDR \
 --name $SUMMARY_CONTAINER \
 --network $APP_NETWORK \
 --restart unless-stopped \

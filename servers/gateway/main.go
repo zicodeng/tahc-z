@@ -11,14 +11,11 @@ import (
 	"gopkg.in/mgo.v2"
 	"log"
 	"net/http"
-	"net/http/httputil"
 	"os"
-	"strings"
-	"sync"
 	"time"
 )
 
-//main is the main entry point for the server
+// main is the main entry point for the server.
 func main() {
 	// Read the ADDR environment variable to get the address
 	// the server should listen on. If empty, default to ":443".
@@ -52,6 +49,10 @@ func main() {
 		Addr: redisAddr,
 	})
 
+	// Listening for microservices.
+	serviceList := handlers.NewServiceList()
+	go listenForServices(redisClient, serviceList)
+
 	// Redis store for storing SessionState.
 	sessionStore := sessions.NewRedisStore(redisClient, time.Hour)
 
@@ -82,18 +83,18 @@ func main() {
 	ctx := handlers.NewHandlerContext(sessionKey, trie, sessionStore, userStore, attemptStore, resetCodeStore)
 
 	// Messaging microservice addresses.
-	msgAddrs := os.Getenv("MESSAGESVCADDR")
-	if len(msgAddrs) == 0 {
-		log.Fatal("Please set MESSAGESVCADDR environment variables")
-	}
-	msgAddrSlice := strings.Split(msgAddrs, ",")
+	// msgAddrs := os.Getenv("MESSAGESVCADDR")
+	// if len(msgAddrs) == 0 {
+	// 	log.Fatal("Please set MESSAGESVCADDR environment variables")
+	// }
+	// msgAddrSlice := strings.Split(msgAddrs, ",")
 
-	// Summary microservice addresses.
-	sumAddrs := os.Getenv("SUMMARYSVCADDR")
-	if len(sumAddrs) == 0 {
-		log.Fatal("Please set SUMMARYSVCADDR environment variables")
-	}
-	sumAddrSlice := strings.Split(sumAddrs, ",")
+	// // Summary microservice addresses.
+	// sumAddrs := os.Getenv("SUMMARYSVCADDR")
+	// if len(sumAddrs) == 0 {
+	// 	log.Fatal("Please set SUMMARYSVCADDR environment variables")
+	// }
+	// sumAddrSlice := strings.Split(sumAddrs, ",")
 
 	// Create a new mux for the web server.
 	mux := http.NewServeMux()
@@ -109,15 +110,18 @@ func main() {
 	mux.HandleFunc("/v1/passwords", ctx.ResetPasswordHandler)
 
 	// Messaging microservice.
-	mux.Handle("/v1/channels", newServiceProxy(msgAddrSlice, ctx))
-	mux.Handle("/v1/channels/", newServiceProxy(msgAddrSlice, ctx))
-	mux.Handle("/v1/messages/", newServiceProxy(msgAddrSlice, ctx))
+	// mux.Handle("/v1/channels", newServiceProxy(msgAddrSlice, ctx))
+	// mux.Handle("/v1/channels/", newServiceProxy(msgAddrSlice, ctx))
+	// mux.Handle("/v1/messages/", newServiceProxy(msgAddrSlice, ctx))
 
 	// Summary microservice.
-	mux.Handle("/v1/summary", newServiceProxy(sumAddrSlice, ctx))
+	// mux.Handle("/v1/summary", newServiceProxy(sumAddrSlice, ctx))
 
+	// Chained middlewares.
+	// Wraps mux inside DSDHandler.
+	dsdMux := handlers.NewDSDHandler(mux, serviceList, ctx)
 	// Wraps mux inside CORSHandler.
-	corsMux := handlers.NewCORSHandler(mux)
+	corsMux := handlers.NewCORSHandler(dsdMux)
 
 	// Start a web server listening on the address you read from
 	// the environment variable, using the mux you created as
@@ -127,33 +131,49 @@ func main() {
 	log.Fatal(http.ListenAndServeTLS(addr, tlscert, tlskey, corsMux))
 }
 
-func newServiceProxy(addrs []string, ctx *handlers.HandlerContext) *httputil.ReverseProxy {
-	i := 0
-	mutex := sync.Mutex{}
-	return &httputil.ReverseProxy{
-		Director: func(r *http.Request) {
-			user := getCurrentUser(r, ctx)
-			if user != nil {
-				userJSON, err := json.Marshal(user)
-				if err != nil {
-					log.Printf("error marshaling user: %v", err)
-				}
-				r.Header.Add("X-User", string(userJSON))
+// Constantly listen for "microservices" Redis channel.
+func listenForServices(redisClient *redis.Client, serviceList *handlers.ServiceList) {
+	pubsub := redisClient.Subscribe("microservices")
+	for {
+		msg, err := pubsub.ReceiveMessage()
+		if err != nil {
+			log.Println(err)
+		}
+		svc := &receivedService{}
+		err = json.Unmarshal([]byte(msg.Payload), svc)
+		if err != nil {
+			log.Printf("error unmarshalling received microservice JSON to struct: %v", err)
+		}
+
+		// Add the received microservice instance into our service list.
+		_, hasSvc := serviceList.Services[svc.Name]
+		//  add mutex here
+		// If this microservice is already in our list...
+		if hasSvc {
+			// Check if this specific microservice instance exists in our list by its unique address...
+			_, hasInstance := serviceList.Services[svc.Name].Instances[svc.Address]
+			if hasInstance {
+				// If this microservice instance is in our list,
+				// update its lastHeartbeat time field.
+				serviceList.Services[svc.Name].Instances[svc.Address].LastHeartbeat = time.Now()
+			} else {
+				// If not, add this instance to our list.
+				serviceList.Services[svc.Name].Instances[svc.Address] = handlers.NewServiceInstance(svc.Address, time.Now())
 			}
-			mutex.Lock()
-			r.URL.Host = addrs[i%len(addrs)]
-			i++
-			mutex.Unlock()
-			r.URL.Scheme = "http"
-		},
+
+		} else {
+			// If this microservice is not in our list,
+			// create a new instance of that microservice
+			// and add to the list.
+			instances := make(map[string]*handlers.ServiceInstance)
+			instances[svc.Address] = handlers.NewServiceInstance(svc.Address, time.Now())
+			serviceList.Services[svc.Name] = handlers.NewService(svc.Name, svc.PathPattern, instances)
+		}
 	}
 }
 
-func getCurrentUser(r *http.Request, ctx *handlers.HandlerContext) *users.User {
-	sessionState := &handlers.SessionState{}
-	_, err := sessions.GetState(r, ctx.SigningKey, ctx.SessionStore, sessionState)
-	if err != nil {
-		return nil
-	}
-	return sessionState.User
+type receivedService struct {
+	Name        string
+	PathPattern string
+	Address     string
 }

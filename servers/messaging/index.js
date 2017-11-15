@@ -7,6 +7,9 @@ const mongoURL = `mongodb://${mongoAddr}/info_344`;
 const ChannelStore = require('./models/channels/channel-store');
 const MessageStore = require('./models/messages/message-store');
 
+const redis = require('redis');
+const redisAddr = process.env.REDISADDR || '192.168.99.100';
+
 const express = require('express');
 const app = express();
 const morgan = require('morgan');
@@ -22,6 +25,23 @@ const portNum = parseInt(port);
 mongodb.MongoClient
     .connect(mongoURL)
     .then(db => {
+        // When messaging microservice starts up,
+        // publish information about this microservice every 10 seconds,
+        // so that our gateway is guaranteed to get the lastest status
+        // about this microservice. If it dies, our gateway will be informed.
+        const publisher = redis.createClient({
+            host: redisAddr
+        });
+        const sec = 1000;
+        const msgSvc = {
+            name: 'messaging',
+            pathPattern: '/v1/(channels|messages)/?',
+            address: addr
+        };
+        setInterval(() => {
+            publisher.publish('microservices', JSON.stringify(msgSvc));
+        }, 10 * sec);
+
         // Add global middlewares.
         app.use(morgan(process.env.LOG_FORMAT || 'dev'));
         // Parses posted JSON and makes
