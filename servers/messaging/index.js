@@ -23,14 +23,16 @@ const addr = process.env.ADDR || 'localhost:4000';
 const [host, port] = addr.split(':');
 const portNum = parseInt(port);
 
-// Guarantee our MongoDB is started before clients can make any connections.
-mongodb.MongoClient
-    .connect(mongoURL)
-    .then(db => {
+(async () => {
+    try {
+        // Guarantee our MongoDB is started before clients can make any connections.
+        const db = await mongodb.MongoClient.connect(mongoURL);
+
         // When messaging microservice starts up,
         // publish information about this microservice every 10 seconds,
         // so that our gateway is guaranteed to get the lastest status
         // about this microservice. If it dies, our gateway will be informed.
+        // Guarantee our MongoDB is started before clients can make any connections.
         const publisher = redis.createClient({
             host: redisAddr
         });
@@ -58,8 +60,10 @@ mongodb.MongoClient
         app.use((req, res, next) => {
             const userJSON = req.get('X-User');
             if (!userJSON) {
-                res.status(401);
-                throw new Error('no X-User header found in the request');
+                res.set('Content-Type', 'text/plain');
+                res.status(401).send('no X-User header found in the request');
+                // Stop continuing.
+                return;
             }
             // Invoke next chained handler if the user is authenticated.
             next();
@@ -69,32 +73,21 @@ mongodb.MongoClient
         let channelStore = new ChannelStore(db, 'channels');
         let messageStore = new MessageStore(db, 'messages');
 
-        // Add a default channel named "general".
-        const channel = new Channel('general', '');
-        channelStore.insert(channel);
+        const defaultChannel = new Channel('general', '');
+        const fetchedChannel = await channelStore.getByName(defaultChannel.name);
+        // Add the default channel if not found.
+        if (!fetchedChannel) {
+            const channel = await channelStore.insert(defaultChannel);
+        }
 
         // API resource handlers.
         app.use(ChannelHandler(channelStore, messageStore));
         app.use(MessageHandler(messageStore));
 
-        // Error handler.
-        app.use((err, req, res, next) => {
-            // Write a stack trace to standard out,
-            // which writes to the server's log.
-            console.error(err.stack);
-
-            // But only report the error message to the client.
-            res.set('Content-Type', 'text/plain');
-            if (res.statusCode === 200) {
-                res.status(500);
-            }
-            res.send(err.message);
-        });
-
         app.listen(portNum, host, () => {
             console.log(`server is listening at http://${addr}`);
         });
-    })
-    .catch(err => {
-        throw err;
-    });
+    } catch (err) {
+        console.log(err);
+    }
+})();

@@ -18,6 +18,11 @@ class ChannelStore {
         return this.collection.findOne({ _id: id });
     }
 
+    // getByName retrieves one channel from MongoDB for a given channel name.
+    getByName(name) {
+        return this.collection.findOne({ name: name });
+    }
+
     // getAll() retrieves all channel from MongoDB.
     getAll() {
         return this.collection

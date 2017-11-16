@@ -10,6 +10,9 @@ const MessageHandler = messageStore => {
         throw new Error('no channel and/or message store found');
     }
 
+    class BreakSignal {}
+    const breakSignal = new BreakSignal();
+
     const router = express.Router();
 
     // Allow message creator to modify this message.
@@ -23,8 +26,8 @@ const MessageHandler = messageStore => {
             .then(message => {
                 if (message.creator.id !== user.id) {
                     res.set('Content-Type', 'text/plain');
-                    res.status(403);
-                    throw new Error('only message creator can modify this message');
+                    res.status(403).send('only message creator can modify this message');
+                    throw breakSignal;
                 }
                 return;
             })
@@ -39,8 +42,9 @@ const MessageHandler = messageStore => {
                 res.json(updatedMessage);
             })
             .catch(err => {
-                console.log(err.stack);
-                res.send(err.message);
+                if (err !== breakSignal) {
+                    console.log(err);
+                }
             });
     });
 
@@ -55,8 +59,8 @@ const MessageHandler = messageStore => {
             .then(message => {
                 if (message.creator.id !== user.id) {
                     res.set('Content-Type', 'text/plain');
-                    res.status(403);
-                    throw new Error('only message creator can delete this message');
+                    res.status(403).send('only message creator can delete this message');
+                    throw breakSignal;
                 }
                 return;
             })
@@ -68,8 +72,9 @@ const MessageHandler = messageStore => {
                 res.status(200).send('message deleted');
             })
             .catch(err => {
-                console.log(err.stack);
-                res.send(err.message);
+                if (err !== breakSignal) {
+                    console.log(err);
+                }
             });
     });
 

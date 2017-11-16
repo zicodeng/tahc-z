@@ -14,6 +14,10 @@ const ChannelHandler = (channelStore, messageStore) => {
         throw new Error('no channel and/or message store found');
     }
 
+    // A signal indicating that the promise should break here.
+    class BreakSignal {}
+    const breakSignal = new BreakSignal();
+
     const router = express.Router();
 
     // Respond with the list of all channels.
@@ -24,7 +28,7 @@ const ChannelHandler = (channelStore, messageStore) => {
                 res.json(channels);
             })
             .catch(err => {
-                throw err;
+                console.log(err);
             });
     });
 
@@ -33,8 +37,8 @@ const ChannelHandler = (channelStore, messageStore) => {
         const name = req.body.name;
         if (!name) {
             res.set('Content-Type', 'text/plain');
-            res.status(400);
-            throw new Error('no channel name found in the request');
+            res.status(400).send('no channel name found in the request');
+            return;
         }
 
         let description = '';
@@ -52,7 +56,7 @@ const ChannelHandler = (channelStore, messageStore) => {
                 res.json(channel);
             })
             .catch(err => {
-                throw err;
+                console.log(err);
             });
     });
 
@@ -65,7 +69,7 @@ const ChannelHandler = (channelStore, messageStore) => {
                 res.json(messages);
             })
             .catch(err => {
-                throw err;
+                console.log(err);
             });
     });
 
@@ -100,6 +104,12 @@ const ChannelHandler = (channelStore, messageStore) => {
                 });
                 return;
             })
+            .catch(err => {
+                // If there is an error getting page summaries,
+                // we still want to continue inserting this message.
+                console.log(err.message);
+                return;
+            })
             .then(() => {
                 return messageStore.insert(message);
             })
@@ -107,7 +117,7 @@ const ChannelHandler = (channelStore, messageStore) => {
                 res.json(newMessage);
             })
             .catch(err => {
-                throw err;
+                console.log(err);
             });
     });
 
@@ -121,15 +131,16 @@ const ChannelHandler = (channelStore, messageStore) => {
             .then(channel => {
                 if (!channel) {
                     res.set('Content-Type', 'text/plain');
-                    res.status(400);
-                    throw new Error('no such channel found');
+                    res.status(400).send('no such channel found');
+                    // throw { type: 0 };
+                    throw breakSignal;
                 }
                 // If the current user isn't the creator,
                 // respond with the status code 403 (Forbidden).
                 if (!channel.creator || channel.creator.id !== user.id) {
                     res.set('Content-Type', 'text/plain');
-                    res.status(403);
-                    throw new Error('only channel creator can modify this channel');
+                    res.status(403).send('only channel creator can modify this channel');
+                    throw breakSignal;
                 }
                 return;
             })
@@ -148,8 +159,9 @@ const ChannelHandler = (channelStore, messageStore) => {
                 res.json(updatedChannel);
             })
             .catch(err => {
-                console.log(err.stack);
-                res.send(err.message);
+                if (err !== breakSignal) {
+                    console.log(err);
+                }
             });
     });
 
@@ -164,13 +176,13 @@ const ChannelHandler = (channelStore, messageStore) => {
             .then(channel => {
                 if (!channel) {
                     res.set('Content-Type', 'text/plain');
-                    res.status(400);
-                    throw new Error('no such channel found');
+                    res.status(400).send('no such channel found');
+                    throw breakSignal;
                 }
                 if (!channel.creator || channel.creator.id !== user.id) {
                     res.set('Content-Type', 'text/plain');
-                    res.status(403);
-                    throw new Error('only channel creator can delete this channel');
+                    res.status(403).send('only channel creator can delete this channel');
+                    throw breakSignal;
                 }
                 return;
             })
@@ -185,8 +197,9 @@ const ChannelHandler = (channelStore, messageStore) => {
                 res.status(200).send('channel deleted');
             })
             .catch(err => {
-                console.log(err.stack);
-                res.send(err.message);
+                if (err !== breakSignal) {
+                    console.log(err);
+                }
             });
     });
 
