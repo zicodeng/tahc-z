@@ -33,11 +33,17 @@ type Service struct {
 	Heartbeat   int // The microservice's normal heartbeat.
 	// The key of the Instances map is this instance's unique address.
 	Instances map[string]*ServiceInstance
+	proxy     *httputil.ReverseProxy
 }
 
 // NewService creates a new microservice.
 func NewService(name string, pathPattern string, heartbeat int, instances map[string]*ServiceInstance) *Service {
-	return &Service{name, pathPattern, heartbeat, instances}
+	addrs := []string{}
+	for addr := range instances {
+		addrs = append(addrs, addr)
+	}
+	proxy := newServiceProxy(addrs)
+	return &Service{name, pathPattern, heartbeat, instances, proxy}
 }
 
 // ServiceInstance is an instance of a given microservice.
@@ -69,6 +75,22 @@ func NewDSDHandler(handlerToWrap http.Handler, serviceList *ServiceList, ctx *Ha
 // ServeHTTP is a method of DSDHandler.
 // Now our DSDHandler is a http.Handler.
 func (dsdh *DSDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Validate the user.
+	user := dsdh.getCurrentUser(r)
+	if user != nil {
+		userJSON, err := json.Marshal(user)
+		if err != nil {
+			log.Printf("error marshaling user: %v", err)
+		}
+		r.Header.Add("X-User", string(userJSON))
+	} else {
+		// If there is no user found,
+		// explicitly remove X-User header to
+		// prevent a hacker who tries to sneak in
+		// by setting a fake X-User header in the request.
+		r.Header.Del("X-User")
+	}
+
 	// Use the received microservice path pattern
 	// to determine which microservice should this requset
 	// be forwarded to.
@@ -78,12 +100,15 @@ func (dsdh *DSDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		pattern := svc.PathPattern
 		re := regexp.MustCompile(pattern)
 		if re.MatchString(r.URL.Path) {
-			addrs := []string{}
-			for addr := range svc.Instances {
-				addrs = append(addrs, addr)
-			}
-			proxy := dsdh.newServiceProxy(addrs)
-			proxy.ServeHTTP(w, r)
+			// addrs := []string{}
+			// for addr := range svc.Instances {
+			// 	addrs = append(addrs, addr)
+			// }
+			// proxy := dsdh.newServiceProxy(addrs)
+			svc.proxy.ServeHTTP(w, r)
+			// Return this function if we find a match,
+			// and request is routed to our microservice.
+			return
 		}
 	}
 
@@ -95,19 +120,11 @@ func (dsdh *DSDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // newServiceProxy forwards relevant requests to microservices based on resource path.
 // The microservices should have corresponding handlers that can handle those requests.
-func (dsdh *DSDHandler) newServiceProxy(addrs []string) *httputil.ReverseProxy {
+func newServiceProxy(addrs []string) *httputil.ReverseProxy {
 	i := 0
 	mutex := sync.Mutex{}
 	return &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
-			user := dsdh.getCurrentUser(r)
-			if user != nil {
-				userJSON, err := json.Marshal(user)
-				if err != nil {
-					log.Printf("error marshaling user: %v", err)
-				}
-				r.Header.Add("X-User", string(userJSON))
-			}
 			mutex.Lock()
 			r.URL.Host = addrs[i%len(addrs)]
 			i++

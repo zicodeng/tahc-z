@@ -184,7 +184,9 @@ func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) 
 // for which you haven't received a heartbeat in a while,
 // and remove those instances from your list
 func removeCrashedServices(serviceList *handlers.ServiceList) {
-	for _ = range time.Tick(time.Second * 10) {
+	for {
+		time.Sleep(time.Second * 10)
+
 		serviceList.Mx.Lock()
 		for svcName := range serviceList.Services {
 			svc := serviceList.Services[svcName]
