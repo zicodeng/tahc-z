@@ -3,8 +3,10 @@
 
 const mongodb = require('mongodb');
 const express = require('express');
+
 const Channel = require('./../models/channels/channel');
 const Message = require('./../models/messages/message');
+const sendToMQ = require('./message-queue');
 
 const getUrls = require('get-urls');
 const axios = require('axios');
@@ -54,6 +56,11 @@ const ChannelHandler = (channelStore, messageStore) => {
             .insert(channel)
             .then(channel => {
                 res.json(channel);
+                const data = {
+                    type: 'channel-new',
+                    channel: channel
+                };
+                sendToMQ(req, data);
             })
             .catch(err => {
                 console.log(err);
@@ -115,6 +122,11 @@ const ChannelHandler = (channelStore, messageStore) => {
             })
             .then(newMessage => {
                 res.json(newMessage);
+                const data = {
+                    type: 'message-new',
+                    message: newMessage
+                };
+                sendToMQ(req, data);
             })
             .catch(err => {
                 console.log(err);
@@ -132,7 +144,6 @@ const ChannelHandler = (channelStore, messageStore) => {
                 if (!channel) {
                     res.set('Content-Type', 'text/plain');
                     res.status(400).send('no such channel found');
-                    // throw { type: 0 };
                     throw breakSignal;
                 }
                 // If the current user isn't the creator,
@@ -157,6 +168,11 @@ const ChannelHandler = (channelStore, messageStore) => {
             })
             .then(updatedChannel => {
                 res.json(updatedChannel);
+                const data = {
+                    type: 'channel-update',
+                    channel: updatedChannel
+                };
+                sendToMQ(req, data);
             })
             .catch(err => {
                 if (err !== breakSignal) {
@@ -187,14 +203,19 @@ const ChannelHandler = (channelStore, messageStore) => {
                 return;
             })
             .then(() => {
-                return channelStore.delete(channelID);
+                messageStore.deleteAll(channelID);
             })
             .then(() => {
-                return messageStore.deleteAll(channelID);
+                channelStore.delete(channelID);
             })
             .then(() => {
                 res.set('Content-Type', 'text/plain');
                 res.status(200).send('channel deleted');
+                const data = {
+                    type: 'channel-delete',
+                    channel: channelID
+                };
+                sendToMQ(req, data);
             })
             .catch(err => {
                 if (err !== breakSignal) {

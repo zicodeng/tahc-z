@@ -3,7 +3,9 @@
 
 const mongodb = require('mongodb');
 const express = require('express');
+
 const Message = require('./../models/messages/message');
+const sendToMQ = require('./message-queue');
 
 const MessageHandler = messageStore => {
     if (!messageStore) {
@@ -40,6 +42,11 @@ const MessageHandler = messageStore => {
             })
             .then(updatedMessage => {
                 res.json(updatedMessage);
+                const data = {
+                    type: 'message-update',
+                    message: updatedMessage
+                };
+                sendToMQ(req, data);
             })
             .catch(err => {
                 if (err !== breakSignal) {
@@ -67,9 +74,14 @@ const MessageHandler = messageStore => {
             .then(() => {
                 return messageStore.delete(messageID);
             })
-            .then(() => {
+            .then(deletedMessage => {
                 res.set('Content-Type', 'text/plain');
                 res.status(200).send('message deleted');
+                const data = {
+                    type: 'message-delete',
+                    message: messageID
+                };
+                sendToMQ(req, data);
             })
             .catch(err => {
                 if (err !== breakSignal) {
