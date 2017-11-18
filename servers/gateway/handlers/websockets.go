@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+	"github.com/info344-a17/challenges-zicodeng/servers/gateway/sessions"
 	"log"
 	"net/http"
 	"sync"
@@ -30,6 +32,16 @@ func (ctx *HandlerContext) NewWebSocketsHandler(notifier *Notifier) *WebSocketsH
 
 // ServeHTTP implements the http.Handler interface for the WebSocketsHandler.
 func (wsh *WebSocketsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Users must be authenticated to upgrade to a WebSocket.
+	// if we get an error when retrieving the session state,
+	// respond with an http.StatusUnauthorized.
+	sessionState := &SessionState{}
+	_, err := sessions.GetState(r, wsh.ctx.SigningKey, wsh.ctx.SessionStore, sessionState)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error getting session state: %v", err), http.StatusUnauthorized)
+		return
+	}
+
 	log.Println("received websocket upgrade request")
 	// Upgrade the connection to a WebSocket, and add the
 	// new websock.Conn to the Notifier.
