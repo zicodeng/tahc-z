@@ -111,6 +111,9 @@ func main() {
 	mux.HandleFunc("/v1/resetcodes", ctx.ResetCodesHandler)
 	mux.HandleFunc("/v1/passwords", ctx.ResetPasswordHandler)
 
+	notifier := handlers.NewNotifier()
+	mux.Handle("/v1/ws", ctx.NewWebSocketsHandler(notifier))
+
 	// Hard-code the network addresses where our microservice instances
 	// are listening into environment variables the gateway reads at startup.
 	// This is an easy way to get started,
