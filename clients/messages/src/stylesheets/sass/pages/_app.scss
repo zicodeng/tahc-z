@@ -1,0 +1,76 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    @include respond-to($bp-lg) {
+        flex-direction: row;
+    }
+}
+
+aside {
+    color: white;
+    background-color: $black;
+    padding-top: 50px;
+    position: relative;
+    @include respond-to($bp-lg) {
+        width: 350px;
+        min-height: 100vh;
+    }
+    h3 {
+        text-align: center;
+        margin-bottom: 35px;
+        cursor: pointer;
+    }
+}
+
+nav {
+    ul {
+        padding: 0;
+        margin: 0;
+        list-style: none;
+        @include respond-to($bp-md) {
+            display: flex;
+            justify-content: center;
+        }
+        @include respond-to($bp-lg) {
+            flex-direction: column;
+        }
+        li {
+            padding: 15px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            &:hover {
+                background-color: $blue;
+            }
+            &.active {
+                background-color: $blue;
+            }
+        }
+    }
+}
+
+.log-out {
+    cursor: pointer;
+    text-align: center;
+    width: 100%;
+    position: relative;
+    padding: 15px 0;
+    transition: all 0.2s ease-in-out;
+    @include respond-to($bp-lg) {
+        position: absolute;
+        bottom: 0;
+    }
+    &:hover {
+        background-color: $red;
+    }
+    i {
+        margin-left: 10px;
+    }
+}
+
+section {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}

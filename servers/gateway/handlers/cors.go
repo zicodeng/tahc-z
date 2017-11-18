@@ -1,12 +1,34 @@
 package handlers
 
-/* TODO: implement a CORS middleware handler, as described
-in https://drstearns.github.io/tutorials/cors/ that responds
-with the following headers to all requests:
+import (
+	"net/http"
+)
 
-  Access-Control-Allow-Origin: *
-  Access-Control-Allow-Methods: GET, PUT, POST, PATCH, DELETE
-  Access-Control-Allow-Headers: Content-Type, Authorization
-  Access-Control-Expose-Headers: Authorization
-  Access-Control-Max-Age: 600
-*/
+// CORSHandler is a middleware handler that wraps another http.Handler
+// to do some pre- and/or post-processing of the request.
+type CORSHandler struct {
+	Handler http.Handler
+}
+
+// NewCORSHandler wraps another handler into CORSHandler.
+func NewCORSHandler(handlerToWrap http.Handler) *CORSHandler {
+	return &CORSHandler{handlerToWrap}
+}
+
+// ServeHTTP is a method of CORSHandler.
+// Now our CORSHandler is a http.Handler.
+func (ch *CORSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Add(headerAccessControlAllowOrigin, "*")
+	w.Header().Add(headerAccessControlAllowMethods, "GET, PUT, POST, PATCH, DELETE")
+	w.Header().Add(headerAccessControlAllowHeaders, "Content-Type, Authorization")
+	w.Header().Add(headerAccessControlExposeHeaders, "Authorization")
+	w.Header().Add(headerAccessControlMaxAge, "600")
+
+	// If this is preflight request, the method will
+	// be OPTIONS, so call the real handler only if
+	// the method is something else.
+	if r.Method != "OPTIONS" {
+		ch.Handler.ServeHTTP(w, r)
+	}
+}

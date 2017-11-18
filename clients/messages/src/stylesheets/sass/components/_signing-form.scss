@@ -1,0 +1,198 @@
+@import "material-form";
+
+/* Container */
+
+.signing-form-container {
+    position: relative;
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto 100px;
+    &.active {
+        .material-form {
+            &:first-child {
+                background: darken(white, 5%);
+                margin: 0 15px;
+            }
+            &:nth-child(2) {
+                background: darken(white, 2%);
+                margin: 0 10px;
+            }
+            &.alt {
+                top: 20px;
+                right: 0;
+                width: 100%;
+                min-width: 100%;
+                height: auto;
+                border-radius: 5px;
+                padding: 60px 0 40px;
+                overflow: hidden;
+                .toggle {
+                    position: absolute;
+                    top: 40px;
+                    right: -70px;
+                    box-shadow: none;
+                    @include transform(scale(15));
+                    transition: transform .3s ease;
+                    &:before {
+                        content: '';
+                    }
+                }
+                .title,
+                .input-container,
+                .button-container {
+                    left: 0;
+                    opacity: 1;
+                    visibility: visible;
+                    transition: .3s ease;
+                }
+                .title {
+                    transition-delay: .3s;
+                }
+                .input-container {
+                    transition-delay: .4s;
+                    &:nth-child(2) {
+                        transition-delay: .5s;
+                    }
+                    &:nth-child(3) {
+                        transition-delay: .6s;
+                    }
+                    &:nth-child(4) {
+                        transition-delay: .7s;
+                    }
+                    &:nth-child(5) {
+                        transition-delay: .8s;
+                    }
+                    &:nth-child(6) {
+                        transition-delay: .9s;
+                    }
+                }
+                .button-container {
+                    transition-delay: 1s;
+                }
+            }
+        }
+    }
+    /* material-form */
+    .material-form {
+        .error {
+            line-height: 20px;
+            padding: 0 80px;
+        }
+        /* Alt material-form */
+        &.alt {
+            position: absolute;
+            top: 40px;
+            right: -70px;
+            z-index: 10;
+            width: 140px;
+            height: 140px;
+            background: none;
+            border-radius: 100%;
+            box-shadow: none;
+            padding: 0;
+            margin-bottom: 100px;
+            transition: .3s ease;
+            /* Toggle */
+            .toggle {
+                position: relative;
+                background: $blue;
+                width: 140px;
+                height: 140px;
+                border-radius: 100%;
+                @include materialShadow(1);
+                color: white;
+                font-size: 58px;
+                line-height: 140px;
+                text-align: center;
+                cursor: pointer;
+                &:before {
+                    content: '\f040';
+                    display: inline-block;
+                    font: normal normal normal 14px/1 FontAwesome;
+                    font-size: inherit;
+                    text-rendering: auto;
+                    -webkit-font-smoothing: antialiased;
+                    -moz-osx-font-smoothing: grayscale;
+                    transform: translate(0, 0);
+                }
+                &.active {
+                    cursor: default;
+                }
+            }
+            .title,
+            .input-container,
+            .button-container {
+                left: 100px;
+                opacity: 0;
+                visibility: hidden;
+            }
+            /* Title */
+            .title {
+                position: relative;
+                border-color: white;
+                color: white;
+                .close {
+                    cursor: pointer;
+                    position: absolute;
+                    top: 0;
+                    right: 60px;
+                    display: inline;
+                    color: white;
+                    font-size: 58px;
+                    font-weight: 400;
+                    &:before {
+                        content: '\00d7';
+                    }
+                }
+            }
+            /* Input */
+            .input-container {
+                input {
+                    color: white;
+                    &:focus {
+                        ~label {
+                            color: white;
+                        }
+                        ~.bar {
+                            &:before,
+                            &:after {
+                                background: white;
+                            }
+                        }
+                    }
+                    &:valid {
+                        ~label {
+                            color: white;
+                        }
+                    }
+                }
+                label {
+                    color: rgba(white, 0.8);
+                }
+                .bar {
+                    background: rgba(white, 0.8);
+                }
+            }
+            /* Button */
+            .button-container {
+                button {
+                    width: 100%;
+                    background: white;
+                    border-color: white;
+                    span {
+                        color: $blue;
+                    }
+                    &:hover {
+                        background: rgba(white, 0.9);
+                    }
+                    &:active,
+                    &:focus {
+                        &:before {
+                            display: none;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

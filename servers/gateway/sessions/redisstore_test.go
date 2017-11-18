@@ -39,6 +39,8 @@ func TestRedisStore(t *testing.T) {
 		t.Fatalf("error generating new SessionID: %v", err)
 	}
 
+	// Windows home users should set REDISADDR to
+	// their Linux VM IP address.
 	redisaddr := os.Getenv("REDISADDR")
 	if len(redisaddr) == 0 {
 		redisaddr = "127.0.0.1:6379"
@@ -58,8 +60,8 @@ func TestRedisStore(t *testing.T) {
 		t.Fatalf("error saving state: %v", err)
 	}
 
-	//verify that trying to save an unmarshalable session state
-	//generates an error (function values can't be encoded in JSON)
+	// Verify that trying to save an unmarshalable session state
+	// generates an error (function values can't be encoded in JSON).
 	if err := store.Save(sid, func() {}); err == nil {
 		t.Error("expected erorr when attempting to save an unmarshalable session state")
 	}
