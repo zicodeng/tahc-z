@@ -136,7 +136,7 @@ func (n *Notifier) start() {
 	// them to all WebSocket clients.
 	for msg := range n.eventQ {
 		n.mx.Lock()
-
+		log.Println("Broadcasting:", string(msg))
 		// Loop through all the existing clients,
 		// and send messages to all of them.
 		for i, c := range n.clients {

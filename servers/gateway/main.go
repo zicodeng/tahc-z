@@ -8,6 +8,7 @@ import (
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/resetcodes"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/users"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/sessions"
+	"github.com/streadway/amqp"
 	"gopkg.in/mgo.v2"
 	"log"
 	"net/http"
@@ -113,6 +114,11 @@ func main() {
 
 	notifier := handlers.NewNotifier()
 	mux.Handle("/v1/ws", ctx.NewWebSocketsHandler(notifier))
+	mqAddr := os.Getenv("MQADDR")
+	if len(mqAddr) == 0 {
+		log.Fatal("Please set the MQADDR variable to the address of your MQ server")
+	}
+	go listenToMQ(mqAddr, notifier)
 
 	// Hard-code the network addresses where our microservice instances
 	// are listening into environment variables the gateway reads at startup.
@@ -140,6 +146,13 @@ func main() {
 	// that occur when trying to start the web server.
 	log.Printf("Server is listening at https://%s\n", addr)
 	log.Fatal(http.ListenAndServeTLS(addr, tlscert, tlskey, corsMux))
+}
+
+type receivedService struct {
+	Name        string
+	PathPattern string
+	Address     string
+	Heartbeat   int
 }
 
 // Constantly listen for "microservices" Redis channel.
@@ -209,9 +222,55 @@ func removeCrashedServices(serviceList *handlers.ServiceList) {
 	}
 }
 
-type receivedService struct {
-	Name        string
-	PathPattern string
-	Address     string
-	Heartbeat   int
+const maxConnRetries = 5
+const qName = "testQ"
+
+func listenToMQ(addr string, notifier *handlers.Notifier) {
+	conn, err := connectToMQ(addr)
+	if err != nil {
+		log.Fatalf("error connecting to MQ server: %s", err)
+	}
+	log.Printf("connected to MQ server")
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("error opening channel: %v", err)
+	}
+	log.Println("created MQ channel")
+	defer ch.Close()
+
+	q, err := ch.QueueDeclare(qName, false, false, false, false, nil)
+	if err != nil {
+		log.Fatalf("error declaring queue: %v", err)
+	}
+	log.Println("declared MQ queue")
+	messages, err := ch.Consume(q.Name, "", true, false, false, false, nil)
+	if err != nil {
+		log.Fatalf("error listening to queue: %v", err)
+	}
+	log.Println("listening for new MQ messages...")
+	for msg := range messages {
+		// log.Printf("new message id %s received from MQ", string(msg.Body))
+		// Load messages received from RabbitMQ's eventQ channel to
+		// notifier's eventQ channel, so that messages will be
+		// broadcasted to all clients throught websocket.
+		notifier.Notify(msg.Body)
+	}
+}
+
+func connectToMQ(addr string) (*amqp.Connection, error) {
+	mqURL := "amqp://" + addr
+	var conn *amqp.Connection
+	var err error
+	for i := 1; i <= maxConnRetries; i++ {
+		conn, err = amqp.Dial(mqURL)
+		if err == nil {
+			return conn, nil
+		}
+		log.Printf("error connecting to MQ server at %s: %s", mqURL, err)
+		log.Printf("will attempt another connection in %d seconds", i*2)
+		time.Sleep(time.Duration(i*2) * time.Second)
+	}
+	return nil, err
 }
