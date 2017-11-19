@@ -61,7 +61,7 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the `url` query string parameter value from the request.
 	// If not supplied, respond with an http.StatusBadRequest error.
-	pageURL := r.URL.Query().Get("q")
+	pageURL := r.URL.Query().Get("url")
 	if len(pageURL) == 0 {
 		http.Error(w, "no query found in the requested URL", http.StatusBadRequest)
 		return
@@ -70,7 +70,7 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	// Call fetchHTML() to fetch the requested URL.
 	htmlStream, err := fetchHTML(pageURL)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error fetching HTML: %v\n", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("error fetching HTML: %v\n", err), http.StatusBadRequest)
 		return
 	}
 	// Close the response HTML stream so that you don't leak resources.
@@ -79,7 +79,7 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	// Call extractSummary() to extract the page summary meta-data.
 	pageSummary, err := extractSummary(pageURL, htmlStream)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error extracting summary: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("error extracting summary: %v", err), http.StatusBadRequest)
 		return
 	}
 

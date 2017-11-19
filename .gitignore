@@ -1,4 +1,5 @@
 node_modules
+dist
 tls
 
 .DS_Store
