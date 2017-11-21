@@ -45,11 +45,10 @@ class DeleteChannelModal extends React.Component<any, any> {
                 }
             })
             .then(res => {
-                console.log(res.data);
                 this.props.closeModal();
             })
             .catch(error => {
-                console.log(error);
+                window.alert(error.response.data);
             });
     };
 }

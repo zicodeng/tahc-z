@@ -166,6 +166,7 @@ class App extends React.Component<any, any> {
                         channels.push(data.channel);
                         // Set the currently selected channel to the newly created channel.
                         selectedChannel = data.channel;
+                        messages = [];
                         break;
 
                     case 'channel-update':
@@ -187,8 +188,8 @@ class App extends React.Component<any, any> {
                                 channels.splice(i, 1);
                             }
                         });
-                        // Delete all messages in our local state.
-                        messages = [];
+                        // Fetch messages for default channel.
+                        this.fetchMessages(selectedChannel._id);
                         break;
                     default:
                         break;
@@ -274,7 +275,7 @@ class App extends React.Component<any, any> {
                 this.fetchMessages(fetchedChannels[0]._id);
             })
             .catch(error => {
-                console.log(error.response.data);
+                window.alert(error.response.data);
             });
     };
 
@@ -292,7 +293,7 @@ class App extends React.Component<any, any> {
                 });
             })
             .catch(error => {
-                console.log(error.response.data);
+                window.alert(error.response.data);
             });
     };
 

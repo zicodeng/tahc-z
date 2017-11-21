@@ -99,19 +99,49 @@ class Chat extends React.Component<any, any> {
         const li = this.props.messages.map((msg, i) => {
             return (
                 <li key={i} className={msg.creator.id === user.id ? 'editable' : ''}>
-                    <div
-                        className="photo"
-                        style={{ backgroundImage: 'url(' + msg.creator.photoURL + ')' }}
-                    />
-                    <div className="content">
-                        <h4>{`${msg.creator.firstName} ${msg.creator.lastName}`}</h4>
-                        <p>{msg.body}</p>
+                    <div className="message">
+                        <div
+                            className="photo"
+                            style={{ backgroundImage: 'url(' + msg.creator.photoURL + ')' }}
+                        />
+                        <div className="content">
+                            <h4>{`${msg.creator.firstName} ${msg.creator.lastName}`}</h4>
+                            <p>{msg.body}</p>
+                        </div>
+                        {this.renderMessageActions(i)}
                     </div>
-                    {this.renderMessageActions(i)}
+                    {this.renderSummaries(msg)}
                 </li>
             );
         });
         return <ul>{li}</ul>;
+    };
+
+    private renderSummaries = (msg): JSX.Element | null => {
+        console.log(msg);
+        if (!msg.summaries.length) {
+            return null;
+        }
+        const summaries = msg.summaries.map((summary, i) => {
+            return (
+                <li className="summary">
+                    {summary.images && summary.images[0] ? (
+                        <div
+                            className="summary__image"
+                            style={{ backgroundImage: 'url(' + summary.images[0].url + ')' }}
+                        />
+                    ) : null}
+                    {summary.title ? <h4>{summary.title}</h4> : null}
+                    {summary.description ? <p>{summary.description}</p> : null}
+                    {summary.url ? (
+                        <a href={summary.url} target="_blank" className="summary__link">
+                            {summary.url}
+                        </a>
+                    ) : null}
+                </li>
+            );
+        });
+        return <ul className="summaries">{summaries}</ul>;
     };
 
     private renderMessageActions = (i: number): JSX.Element => {
@@ -162,7 +192,7 @@ class Chat extends React.Component<any, any> {
                 }
             })
             .catch(error => {
-                console.log(error.response.data);
+                window.alert(error.response.data);
             });
     };
 
@@ -206,7 +236,7 @@ class Chat extends React.Component<any, any> {
                 this.refs.messageBody['value'] = '';
             })
             .catch(error => {
-                console.log(error.response.data);
+                window.alert(error.response.data);
             });
     };
 
@@ -229,7 +259,7 @@ class Chat extends React.Component<any, any> {
                 });
             })
             .catch(error => {
-                console.log(error.response.data);
+                window.alert(error.response.data);
             });
     };
 }

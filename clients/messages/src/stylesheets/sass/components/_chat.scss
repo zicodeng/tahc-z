@@ -10,30 +10,16 @@
     .message-container {
         height: calc(100% - 140px);
         overflow-y: auto;
-        ul {
-            li {
-                display: flex;
+        >ul {
+            display: flex;
+            flex-direction: column;
+            >li {
+                position: relative;
                 padding: 10px 30px;
-                &.editable {
-                    &:hover {
-                        background-color: lighten($blue, 35%);
-                        .message__actions {
-                            display: flex;
-                        }
-                    }
-                }
-                .photo {
-                    width: 40px;
-                    height: 40px;
-                    background-size: cover;
-                    background-repeat: no-repeat;
-                    @include border-radius(5px);
-                }
-                .content {
-                    margin-left: 10px;
-                    h4 {
-                        margin-bottom: 5px;
-                        font-size: 18px;
+                &.editable:hover {
+                    background-color: lighten($blue, 35%);
+                    .message__actions {
+                        display: flex;
                     }
                 }
             }
@@ -47,6 +33,52 @@
         border: 2px solid $black;
         white-space: pre-wrap;
         @include border-radius(5px);
+    }
+}
+
+.message {
+    display: flex;
+    .photo {
+        width: 40px;
+        height: 40px;
+        background-size: cover;
+        background-repeat: no-repeat;
+        @include border-radius(5px);
+    }
+    .content {
+        margin-left: 10px;
+        h4 {
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+    }
+}
+
+.summaries {
+    width: 600px;
+    margin-top: 10px;
+    margin-left: 50px;
+    text-align: center;
+    .summary {
+        background-color: white;
+        padding: 25px 50px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        &__image {
+            width: 100%;
+            height: 200px;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: contain;
+        }
+        &__link {
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+        p {
+            margin: 10px 0;
+        }
     }
 }
 

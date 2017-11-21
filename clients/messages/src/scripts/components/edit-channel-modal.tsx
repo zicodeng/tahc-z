@@ -69,7 +69,7 @@ class EditChannelModal extends React.Component<any, any> {
                 this.props.closeModal();
             })
             .catch(error => {
-                console.log(error);
+                window.alert(error.response.data);
             });
     };
 }
