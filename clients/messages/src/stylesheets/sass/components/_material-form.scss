@@ -6,7 +6,7 @@
     box-sizing: border-box;
     @include materialShadow(1);
     transition: .3s ease;
-    &:first-child {
+    &--background-card {
         background: darken(white, 2%);
         height: 10px;
         border-radius: 5px 5px 0 0;
@@ -24,6 +24,13 @@
         font-size: 32px;
         font-weight: 600;
         text-transform: uppercase;
+        text-align: center;
+    }
+    .text-container {
+        margin: 0 60px 40px;
+        p {
+            margin-bottom: 10px;
+        }
     }
     /* Inputs */
     .input-container {

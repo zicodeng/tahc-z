@@ -42,7 +42,6 @@ func (wsh *WebSocketsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	log.Println("received websocket upgrade request")
 	// Upgrade the connection to a WebSocket, and add the
 	// new websock.Conn to the Notifier.
 	conn, err := wsh.upgrader.Upgrade(w, r, nil)
@@ -54,7 +53,7 @@ func (wsh *WebSocketsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	// and represent a different client.
 	// So whenever we receive a new request, and ServeHTTP is called,
 	// we need to add that request as a new client to our Notifier's clients field.
-	wsh.notifier.AddClient(conn)
+	go wsh.notifier.AddClient(conn)
 }
 
 // Notifier is an object that handles WebSocket notifications.
@@ -88,8 +87,6 @@ func NewNotifier() *Notifier {
 
 // AddClient adds a new client to the Notifier.
 func (n *Notifier) AddClient(client *websocket.Conn) {
-	log.Println("adding new WebSockets client")
-
 	// Add the client to the `clients` slice
 	// but since this can be called from multiple
 	// goroutines, make sure you protect the `clients`
@@ -123,20 +120,17 @@ func (n *Notifier) AddClient(client *websocket.Conn) {
 // Notify broadcasts the event to all WebSocket clients
 // by sending an event to the eventQ.
 func (n *Notifier) Notify(event []byte) {
-	log.Printf("adding event to the queue")
 	// Add `event` to the `n.eventQ`
 	n.eventQ <- event
 }
 
 // Start starts the notification loop.
 func (n *Notifier) start() {
-	log.Println("starting notifier loop")
 	// Start a never-ending loop that reads
 	// new events out of the `n.eventQ` and broadcasts
 	// them to all WebSocket clients.
 	for msg := range n.eventQ {
 		n.mx.Lock()
-		log.Println("Broadcasting:", string(msg))
 		// Loop through all the existing clients,
 		// and send messages to all of them.
 		for i, c := range n.clients {
