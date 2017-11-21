@@ -1,4 +1,4 @@
-@import "./_floating-action-button.scss";
+@import './_floating-action-button.scss';
 .chat-container {
     width: 100%;
 }
@@ -10,10 +10,10 @@
     .message-container {
         height: calc(100% - 140px);
         overflow-y: auto;
-        >ul {
+        > ul {
             display: flex;
             flex-direction: column;
-            >li {
+            > li {
                 position: relative;
                 padding: 10px 30px;
                 &.editable:hover {
@@ -31,7 +31,6 @@
         margin-top: 5px;
         margin-left: 30px;
         border: 2px solid $black;
-        white-space: pre-wrap;
         @include border-radius(5px);
     }
 }
@@ -70,14 +69,18 @@
             background-position: center;
             background-repeat: no-repeat;
             background-size: contain;
+            margin-bottom: 10px;
         }
         &__link {
             &:hover {
                 text-decoration: underline;
             }
         }
+        h4 {
+            margin-bottom: 10px;
+        }
         p {
-            margin: 10px 0;
+            margin-bottom: 10px;
         }
     }
 }
@@ -102,7 +105,7 @@
         position: absolute;
         right: 30px;
         font-size: 22px;
-        >div {
+        > div {
             cursor: pointer;
         }
         &--delete {
@@ -128,7 +131,7 @@
     border-radius: 5px;
     box-shadow: $card-shadow;
     border: 1px solid $black;
-    >div {
+    > div {
         cursor: pointer;
     }
     &--delete {

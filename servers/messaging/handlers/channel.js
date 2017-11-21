@@ -213,7 +213,7 @@ const ChannelHandler = (channelStore, messageStore) => {
                 res.status(200).send('channel deleted');
                 const data = {
                     type: 'channel-delete',
-                    channel: channelID
+                    channelID: channelID
                 };
                 sendToMQ(req, data);
             })

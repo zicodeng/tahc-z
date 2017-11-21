@@ -14,7 +14,7 @@
         align-items: flex-end;
         width: 500px;
         position: absolute;
-        bottom: 40px;
+        bottom: 30px;
         right: 0;
         opacity: 0;
         visibility: hidden;
@@ -23,7 +23,7 @@
         &.active {
             visibility: visible;
             opacity: 1;
-            transform: translateY(-10%);
+            transform: translateY(-20px);
         }
         li {
             padding: 10px;

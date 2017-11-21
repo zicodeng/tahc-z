@@ -22,7 +22,7 @@ class FloatingActionButton extends React.Component<any, any> {
                 <ul className={this.state.isFabClicked ? 'active' : ''}>
                     {this.props.channels.map((channel, i) => {
                         return (
-                            <li key={i} onClick={e => this.handleSelectChannel(e, channel)}>
+                            <li key={i} onClick={e => this.handleSelectChannel(e, i)}>
                                 {channel.name}
                             </li>
                         );
@@ -42,8 +42,8 @@ class FloatingActionButton extends React.Component<any, any> {
         });
     };
 
-    private handleSelectChannel = (e, channel): void => {
-        this.props.getSelectedChannel(channel);
+    private handleSelectChannel = (e, channelIndex): void => {
+        this.props.getCurrentChannelIndex(channelIndex);
     };
 
     private handleClickNewChannel = (): void => {

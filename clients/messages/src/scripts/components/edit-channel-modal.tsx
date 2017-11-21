@@ -8,7 +8,7 @@ class EditChannelModal extends React.Component<any, any> {
     }
 
     public render() {
-        const selectedChannel = this.props.selectedChannel;
+        const currentChannel = this.props.currentChannel;
         return (
             <div className="modal">
                 <div className="material-form">
@@ -18,7 +18,7 @@ class EditChannelModal extends React.Component<any, any> {
                             <input
                                 type="text"
                                 ref="name"
-                                defaultValue={selectedChannel.name}
+                                defaultValue={currentChannel.name}
                                 required
                             />
                             <label htmlFor="name">Name</label>
@@ -28,7 +28,7 @@ class EditChannelModal extends React.Component<any, any> {
                             <input
                                 type="text"
                                 ref="desc"
-                                defaultValue={selectedChannel.description}
+                                defaultValue={currentChannel.description}
                             />
                             <label htmlFor="desc">Description</label>
                             <div className="bar" />
@@ -46,7 +46,7 @@ class EditChannelModal extends React.Component<any, any> {
 
     private handleSubmitForm = e => {
         e.preventDefault();
-        const selectedChannel = this.props.selectedChannel;
+        const currentChannel = this.props.currentChannel;
         const name = this.refs.name['value'];
         const desc = this.refs.desc['value'];
         const updatedChannel = {
@@ -55,7 +55,7 @@ class EditChannelModal extends React.Component<any, any> {
         };
         const host = this.props.host;
         const sessionToken = this.props.sessionToken;
-        const url = `https://${host}/v1/channels/${selectedChannel._id}`;
+        const url = `https://${host}/v1/channels/${currentChannel._id}`;
         axios
             .patch(url, updatedChannel, {
                 headers: {

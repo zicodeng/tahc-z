@@ -58,7 +58,7 @@ class NewChannelModal extends React.Component<any, any> {
                 this.props.closeModal();
             })
             .catch(error => {
-                window.alert(error.response.data);
+                window.alert(error);
             });
     };
 }

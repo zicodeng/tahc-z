@@ -18,20 +18,21 @@ class Chat extends React.Component<any, any> {
     }
 
     public render(): JSX.Element {
-        const channel = this.props.channel;
+        const currentChannel = this.props.currentChannel;
         return (
             <div className="chat">
                 <header className="channel">
                     <div className="channel__info">
-                        {channel.description ? <p>{channel.description}</p> : null}
-                        {channel.creator ? (
+                        {currentChannel.description ? <p>{currentChannel.description}</p> : null}
+                        {currentChannel.creator ? (
                             <p>
-                                {`Created by ${channel.creator.firstName} ${channel.creator
-                                    .lastName}`}
+                                {`Created by ${currentChannel.creator.firstName} ${
+                                    currentChannel.creator.lastName
+                                }`}
                             </p>
                         ) : null}
                     </div>
-                    <h3 className="channel__name">{channel.name}</h3>
+                    <h3 className="channel__name">{currentChannel.name}</h3>
                     {this.renderChannelActions()}
                 </header>
                 <div id="message-container" className="message-container">
@@ -41,7 +42,7 @@ class Chat extends React.Component<any, any> {
                     id="textarea"
                     rows={1}
                     ref="messageBody"
-                    placeholder={`SHIFT+CTRL to send a message @${channel.name}`}
+                    placeholder={`SHIFT+CTRL to send a message @${currentChannel.name}`}
                     autoFocus
                     onKeyDown={e => this.handleSubmitMessage(e)}
                     onKeyUp={e => this.handleSubmitMessage(e)}
@@ -66,7 +67,8 @@ class Chat extends React.Component<any, any> {
     }
 
     private renderChannelActions = (): JSX.Element | null => {
-        const creator = this.props.channel.creator;
+        const currentChannel = this.props.currentChannel;
+        const creator = currentChannel.creator;
         const user = this.props.user;
         if (!creator || user.id !== creator.id) {
             return null;
@@ -94,9 +96,16 @@ class Chat extends React.Component<any, any> {
         this.props.openModal('DeleteChannel');
     };
 
-    private renderMessages = (): JSX.Element => {
+    private renderMessages = (): JSX.Element | null => {
         const user = this.props.user;
-        const li = this.props.messages.map((msg, i) => {
+        const currentChannel = this.props.currentChannel;
+        const messages = this.props.messages;
+        const currentChannelMessages = messages.get(currentChannel._id);
+
+        if (!currentChannelMessages) {
+            return null;
+        }
+        const li = currentChannelMessages.map((msg, i) => {
             return (
                 <li key={i} className={msg.creator.id === user.id ? 'editable' : ''}>
                     <div className="message">
@@ -106,7 +115,7 @@ class Chat extends React.Component<any, any> {
                         />
                         <div className="content">
                             <h4>{`${msg.creator.firstName} ${msg.creator.lastName}`}</h4>
-                            <p>{msg.body}</p>
+                            <pre>{msg.body}</pre>
                         </div>
                         {this.renderMessageActions(i)}
                     </div>
@@ -118,7 +127,6 @@ class Chat extends React.Component<any, any> {
     };
 
     private renderSummaries = (msg): JSX.Element | null => {
-        console.log(msg);
         if (!msg.summaries.length) {
             return null;
         }
@@ -166,8 +174,10 @@ class Chat extends React.Component<any, any> {
         // const oldMessage = e.currentTarget.parentElement.previousSibling.getElementsByTagName(
         //     'p'
         // )[0].innerText;
-
-        const messageToBeEdited = this.props.messages[i];
+        const currentChannel = this.props.currentChannel;
+        const messages = this.props.messages;
+        const currentChannelMessages = messages.get(currentChannel._id);
+        const messageToBeEdited = currentChannelMessages[i];
 
         const textarea = this.state.textarea;
         textarea.value = messageToBeEdited.body;
@@ -181,7 +191,8 @@ class Chat extends React.Component<any, any> {
     };
 
     private handleDeleteMessage = (e, i): void => {
-        const messageToBeDeleted = this.props.messages[i];
+        const currentChannel = this.props.currentChannel;
+        const messageToBeDeleted = this.props.messages.get(currentChannel._id)[i];
         const host = this.props.host;
         const sessionToken = this.props.sessionToken;
         const url = `https://${host}/v1/messages/${messageToBeDeleted._id}`;
@@ -197,7 +208,7 @@ class Chat extends React.Component<any, any> {
     };
 
     private handleSubmitMessage = (e): void => {
-        const messageBody: String = this.refs.messageBody['value'];
+        let messageBody: String = this.refs.messageBody['value'];
         // Keeps track of what keys the user is pressing down.
         let keys = this.state.keys;
         // If the key is pressed down, set its value to true in the map.
@@ -206,7 +217,7 @@ class Chat extends React.Component<any, any> {
 
         // If SHIFT + ENTER key is pressed,
         // send this message.
-        if (keys[13] && keys[16] && messageBody) {
+        if (keys[13] && keys[16] && messageBody.trim().length) {
             e.preventDefault();
             const messageMode = this.state.messageMode;
             const message = {
@@ -221,10 +232,10 @@ class Chat extends React.Component<any, any> {
     };
 
     private createMessage = (message): void => {
-        const channel = this.props.channel;
+        const currentChannel = this.props.currentChannel;
         const host = this.props.host;
         const sessionToken = this.props.sessionToken;
-        const url = `https://${host}/v1/channels/${channel._id}`;
+        const url = `https://${host}/v1/channels/${currentChannel._id}`;
         axios
             .post(url, message, {
                 headers: {

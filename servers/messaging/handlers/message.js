@@ -79,7 +79,7 @@ const MessageHandler = messageStore => {
                 res.status(200).send('message deleted');
                 const data = {
                     type: 'message-delete',
-                    message: messageID
+                    messageID: messageID
                 };
                 sendToMQ(req, data);
             })

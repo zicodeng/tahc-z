@@ -8,7 +8,6 @@ class DeleteChannelModal extends React.Component<any, any> {
     }
 
     public render() {
-        const selectedChannel = this.props.selectedChannel;
         return (
             <div className="modal">
                 <div className="material-form">
@@ -34,10 +33,10 @@ class DeleteChannelModal extends React.Component<any, any> {
 
     private handleSubmitForm = e => {
         e.preventDefault();
-        const selectedChannel = this.props.selectedChannel;
+        const currentChannel = this.props.currentChannel;
         const host = this.props.host;
         const sessionToken = this.props.sessionToken;
-        const url = `https://${host}/v1/channels/${selectedChannel._id}`;
+        const url = `https://${host}/v1/channels/${currentChannel._id}`;
         axios
             .delete(url, {
                 headers: {

@@ -3,6 +3,7 @@
 set -e
 
 export MESSAGING_CONTAINER=info-344-messaging
+export MQ_CONTAINER=rabbitmq-server
 export APP_NETWORK=appnet
 
 docker pull zicodeng/$MESSAGING_CONTAINER
@@ -26,6 +27,7 @@ fi
 docker run \
 -d \
 -e ADDR=$MESSAGING_CONTAINER:80 \
+-e MQADDR=$MQ_CONTAINER:5672 \
 -e DBADDR=mongo-server:27017 \
 -e REDISADDR=redis-server \
 -e SUMMARYSVCADDR=info-344-summary:80 \

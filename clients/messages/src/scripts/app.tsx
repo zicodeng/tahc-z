@@ -14,11 +14,12 @@ class App extends React.Component<any, any> {
         this.state = {
             user: {},
             hasUser: false,
-            option: 'default',
+            option: 'chat',
             sessionToken: '',
             channels: [],
-            selectedChannel: {},
-            messages: [],
+            currentChannelIndex: 0,
+            messages: new Map(),
+            deletedMessageChannel: 0,
             modal: '',
             overlay: false
         };
@@ -35,8 +36,9 @@ class App extends React.Component<any, any> {
                     onClick={() => this.closeModal()}
                 />
                 <aside>
-                    <h3 onClick={e => this.handleClickMenuOption('default')}>{`Hello, ${this.state
-                        .user.firstName}!`}</h3>
+                    <h3 onClick={e => this.handleClickMenuOption('default')}>{`Hello, ${
+                        this.state.user.firstName
+                    }!`}</h3>
                     <nav>
                         <ul>
                             <li
@@ -137,60 +139,85 @@ class App extends React.Component<any, any> {
         websocket.addEventListener(
             'message',
             function(event) {
-                let messages = this.state.messages;
-                let channels = this.state.channels;
-                let selectedChannel = this.state.selectedChannel;
+                const messages = this.state.messages;
+                const channels = this.state.channels;
+                const user = this.state.user;
+
+                let deletedMessageChannel = this.state.deletedMessageChannel;
+                let currentChannelIndex = this.state.currentChannelIndex;
+
                 const data = JSON.parse(event.data);
                 switch (data.type) {
                     case 'message-new':
-                        messages.push(data.message);
+                        if (messages.has(data.message.channelID)) {
+                            messages.get(data.message.channelID).push(data.message);
+                        }
                         break;
 
                     case 'message-update':
-                        messages.map((message, i) => {
-                            if (message._id == data.message._id) {
-                                messages[i] = data.message;
-                            }
-                        });
+                        if (messages.has(data.message.channelID)) {
+                            messages.get(data.message.channelID).map((message, i) => {
+                                if (message._id === data.message._id) {
+                                    messages.get(data.message.channelID)[i] = data.message;
+                                }
+                            });
+                        }
                         break;
 
                     case 'message-delete':
-                        messages.map((message, i) => {
-                            if (message._id == data.message) {
-                                messages.splice(i, 1);
+                        messages.get(channels[currentChannelIndex]._id).map((message, i) => {
+                            if (message._id === data.messageID) {
+                                messages.get(channels[currentChannelIndex]._id).splice(i, 1);
                             }
                         });
                         break;
 
                     case 'channel-new':
                         channels.push(data.channel);
-                        // Set the currently selected channel to the newly created channel.
-                        selectedChannel = data.channel;
-                        messages = [];
+                        messages.set(data.channel._id, []);
+                        // If the current user created a new channel,
+                        // redirect to the new channel chat page.
+                        if (this.state.user.id === data.channel.creator.id) {
+                            currentChannelIndex = channels.length - 1;
+                        }
                         break;
 
                     case 'channel-update':
-                        selectedChannel = data.channel;
                         channels.map((channel, i) => {
-                            if (channel._id === selectedChannel._id) {
-                                channels[i] = selectedChannel;
+                            if (channel._id === data.channel._id) {
+                                channels[i] = data.channel;
                             }
                         });
                         break;
 
                     case 'channel-delete':
-                        const deletedChannelID = data.channel;
-                        // Fallback to default channel;
-                        selectedChannel = channels[0];
+                        const deletedChannelID = data.channelID;
+
                         // Remove the deleted channel from our local channels state.
                         channels.map((channel, i) => {
                             if (channel._id === deletedChannelID) {
+                                const creatorID = channel.creator.id;
+
+                                // If other users are currently on this deleted channel,
+                                // prompt a message to inform them
+                                // and force them to fallback to default channel.
+                                if (deletedChannelID === channels[currentChannelIndex]._id) {
+                                    currentChannelIndex = 0;
+                                    if (creatorID !== user.id) {
+                                        window.alert(
+                                            'This channel was just deleted by the channel creator.'
+                                        );
+                                    }
+                                }
+
                                 channels.splice(i, 1);
+                                // Delete all messages in this channel.
+                                messages.delete(deletedChannelID);
                             }
                         });
-                        // Fetch messages for default channel.
-                        this.fetchMessages(selectedChannel._id);
+
                         break;
+
                     default:
                         break;
                 }
@@ -198,7 +225,7 @@ class App extends React.Component<any, any> {
                 this.setState({
                     messages: messages,
                     channels: channels,
-                    selectedChannel: selectedChannel
+                    currentChannelIndex: currentChannelIndex
                 });
             }.bind(this)
         );
@@ -267,12 +294,15 @@ class App extends React.Component<any, any> {
             })
             .then(res => {
                 const fetchedChannels = res.data;
+                // Only populate default channel first.
+                // Other channels will be populated as the user selects
+                // different channels.
+                this.fetchMessages(fetchedChannels[0]._id);
                 this.setState({
                     channels: fetchedChannels,
                     // Set channel general as default.
-                    selectedChannel: fetchedChannels[0]
+                    currentChannelIndex: 0
                 });
-                this.fetchMessages(fetchedChannels[0]._id);
             })
             .catch(error => {
                 window.alert(error.response.data);
@@ -288,8 +318,10 @@ class App extends React.Component<any, any> {
                 }
             })
             .then(res => {
+                const messages = this.state.messages;
+                messages.set(channelID, res.data);
                 this.setState({
-                    messages: res.data
+                    messages: messages
                 });
             })
             .catch(error => {
@@ -316,19 +348,22 @@ class App extends React.Component<any, any> {
                 return (
                     <div className="chat-container">
                         {this.renderModal()}
-                        <Chat
-                            host={this.getCurrentHost()}
-                            sessionToken={this.getSessionToken()}
-                            channel={this.state.selectedChannel}
-                            messages={this.state.messages}
-                            user={this.state.user}
-                            openModal={modal => this.openModal(modal)}
-                        />
+                        {this.getCurrentChannel() ? (
+                            <Chat
+                                host={this.getCurrentHost()}
+                                sessionToken={this.getSessionToken()}
+                                currentChannel={this.getCurrentChannel()}
+                                messages={this.state.messages}
+                                user={this.state.user}
+                                openModal={modal => this.openModal(modal)}
+                            />
+                        ) : null}
                         <FloatingActionButton
                             openModal={modal => this.openModal(modal)}
                             channels={this.state.channels}
-                            getSelectedChannel={selectedChannel =>
-                                this.getSelectedChannel(selectedChannel)}
+                            getCurrentChannelIndex={currentChannelIndex =>
+                                this.getCurrentChannelIndex(currentChannelIndex)
+                            }
                         />
                     </div>
                 );
@@ -353,7 +388,7 @@ class App extends React.Component<any, any> {
             case 'EditChannel':
                 return (
                     <EditChannelModal
-                        selectedChannel={this.state.selectedChannel}
+                        currentChannel={this.getCurrentChannel()}
                         host={this.getCurrentHost()}
                         sessionToken={this.getSessionToken()}
                         closeModal={() => this.closeModal()}
@@ -362,7 +397,7 @@ class App extends React.Component<any, any> {
             case 'DeleteChannel':
                 return (
                     <DeleteChannelModal
-                        selectedChannel={this.state.selectedChannel}
+                        currentChannel={this.getCurrentChannel()}
                         host={this.getCurrentHost()}
                         sessionToken={this.getSessionToken()}
                         closeModal={() => this.closeModal()}
@@ -380,11 +415,20 @@ class App extends React.Component<any, any> {
         });
     };
 
-    private getSelectedChannel = (selectedChannel): void => {
+    private getCurrentChannelIndex = (currentChannelIndex): void => {
+        const channels = this.state.channels;
+        const messages = this.state.messages;
+        this.fetchMessages(channels[currentChannelIndex]._id);
         this.setState({
-            selectedChannel: selectedChannel
+            currentChannelIndex: currentChannelIndex
         });
-        this.fetchMessages(selectedChannel._id);
+    };
+
+    private getCurrentChannel = () => {
+        const channels = this.state.channels;
+        const currentChannelIndex = this.state.currentChannelIndex;
+        const currentChannel = channels[currentChannelIndex];
+        return currentChannel;
     };
 
     private openModal = modal => {
