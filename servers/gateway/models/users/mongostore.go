@@ -2,6 +2,7 @@ package users
 
 import (
 	"fmt"
+	"github.com/info344-a17/challenges-zicodeng/servers/gateway/indexes"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -102,4 +103,43 @@ func (store *MongoStore) Delete(userID bson.ObjectId) error {
 	}
 
 	return nil
+}
+
+// Index stores all users email, username, lastname, and firstname into a trie.
+func (store *MongoStore) Index() *indexes.Trie {
+	user := &User{}
+	trie := indexes.NewTrie()
+
+	// Iterate all users from database one at a time.
+	iter := store.session.DB(store.dbname).C(store.colname).Find(nil).Iter()
+
+	trie.Mx.Lock()
+	for iter.Next(user) {
+		trie.Insert(user.Email, user.ID)
+		trie.Insert(user.UserName, user.ID)
+		trie.Insert(user.LastName, user.ID)
+		trie.Insert(user.FirstName, user.ID)
+	}
+	trie.Mx.Unlock()
+
+	// Report any errors that occurred.
+	if err := iter.Err(); err != nil {
+		fmt.Printf("error iterating stored documents: %v", err)
+	}
+
+	return trie
+}
+
+// ConvertToUsers converts all keys(User IDs) in a given map to a slice of User.
+func (store *MongoStore) ConvertToUsers(userIDs map[bson.ObjectId]bool) ([]*User, error) {
+	users := []*User{}
+	for userID := range userIDs {
+		user, err := store.GetByID(userID)
+		if err != nil {
+			return nil, fmt.Errorf("error getting user: %v", err)
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
 }

@@ -2,7 +2,7 @@
 // Import custom modules.
 @import "helpers/module";
 @import "base/module";
-@import "utils/module";
 @import "layout/module";
 @import "pages/index";
-@import "components/login-form"
+@import "components/signing-form";
+@import "components/password-reset-form";

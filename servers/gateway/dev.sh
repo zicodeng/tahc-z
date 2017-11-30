@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# ./build.sh
-
 # Export environment variables.
 source devenv.sh
 
@@ -14,7 +12,6 @@ docker run \
 -d \
 --name redis-server \
 -p 6379:6379 \
---restart unless-stopped \
 redis
 
 if [ "$(docker ps -aq --filter name=mongo-server)" ]; then
@@ -26,8 +23,8 @@ docker run \
 -d \
 --name mongo-server \
 -p 27017:27017 \
---restart unless-stopped \
-mongo
+-e MONGO_INITDB_DATABASE=$DBNAME \
+drstearns/mongo1kusers
 
 # Run API server.
 go run main.go

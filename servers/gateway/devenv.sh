@@ -11,3 +11,5 @@ export SESSIONKEY="secret signing key"
 export REDISADDR=192.168.99.100:6379
 
 export DBADDR=192.168.99.100:27017
+
+export DBNAME="info_344"

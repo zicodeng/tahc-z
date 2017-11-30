@@ -1,30 +1,34 @@
 import * as React from 'react';
 
-class LoginForm extends React.Component<any, any> {
+class SigningForm extends React.Component<any, any> {
     constructor(props, context) {
         super(props, context);
 
         this.state = {
-            isRegister: false,
-            loginError: '',
-            registerError: ''
+            isSignup: false,
+            signinError: '',
+            signupError: ''
         };
     }
 
     public render() {
         return (
-            <div className={this.state.isRegister ? 'form-container active' : 'form-container'}>
-                <div className="card" />
-                <div className="card">
-                    <h1 className="title">Login</h1>
-                    <form onSubmit={e => this.handleSubmitLoginForm(e)}>
+            <div
+                className={
+                    this.state.isSignup ? 'signing-form-container active' : 'signing-form-container'
+                }
+            >
+                <div className="material-form" />
+                <div className="material-form">
+                    <h1 className="title">Sign In</h1>
+                    <form onSubmit={e => this.handleSubmitSigninForm(e)}>
                         <div className="input-container">
-                            <input type="email" ref="loginEmail" required />
+                            <input type="email" ref="signinEmail" required />
                             <label htmlFor="email">Email</label>
                             <div className="bar" />
                         </div>
                         <div className="input-container">
-                            <input type="password" ref="loginPassword" required />
+                            <input type="password" ref="signinPassword" required />
                             <label htmlFor="password">Password</label>
                             <div className="bar" />
                         </div>
@@ -34,21 +38,23 @@ class LoginForm extends React.Component<any, any> {
                             </button>
                         </div>
                         <div className="footer">
-                            <a href="#">Forgot your password?</a>
+                            <a href="#" onClick={e => this.handleClickForgotPassword(e)}>
+                                Forgot your password?
+                            </a>
                         </div>
                     </form>
-                    <p className="error">{this.state.loginError}</p>
+                    <p className="error">{this.state.signinError}</p>
                 </div>
-                <div className="card alt">
+                <div className="material-form alt">
                     <div
-                        className={this.state.isRegister ? 'toggle active' : 'toggle'}
-                        onClick={e => this.openRegisterForm()}
+                        className={this.state.isSignup ? 'toggle active' : 'toggle'}
+                        onClick={e => this.openSignupForm()}
                     />
                     <h1 className="title">
-                        Register
-                        <div className="close" onClick={e => this.closeRegisterForm()} />
+                        Sign Up
+                        <div className="close" onClick={e => this.closeSignupForm()} />
                     </h1>
-                    <form onSubmit={e => this.handleSubmitRegisterForm(e)}>
+                    <form onSubmit={e => this.handleSubmitSignupForm(e)}>
                         <div className="input-container">
                             <input type="text" ref="userName" required />
                             <label htmlFor="username">Username</label>
@@ -85,33 +91,33 @@ class LoginForm extends React.Component<any, any> {
                             </button>
                         </div>
                     </form>
-                    <p className="error">{this.state.registerError}</p>
+                    <p className="error">{this.state.signupError}</p>
                 </div>
             </div>
         );
     }
 
-    private openRegisterForm(): void {
+    private openSignupForm(): void {
         this.setState({
-            isRegister: true,
-            loginError: '',
-            registerError: ''
+            isSignup: true,
+            signinError: '',
+            signupError: ''
         });
     }
 
-    private closeRegisterForm(): void {
+    private closeSignupForm(): void {
         this.setState({
-            isRegister: false,
-            loginError: '',
-            registerError: ''
+            isSignup: false,
+            signinError: '',
+            signupError: ''
         });
     }
 
     // Sign in the user and save the session token in local storage.
-    private handleSubmitLoginForm(e): void {
+    private handleSubmitSigninForm(e): void {
         e.preventDefault();
-        const email = this.refs.loginEmail['value'];
-        const password: String = this.refs.loginPassword['value'];
+        const email = this.refs.signinEmail['value'];
+        const password: String = this.refs.signinPassword['value'];
 
         const userCredential: Object = {
             email: email,
@@ -160,22 +166,22 @@ class LoginForm extends React.Component<any, any> {
                     // If the data type is not a string,
                     // it means the user is authenticated,
                     // clear form and redirect the user to app page.
-                    this.refs.loginEmail['value'] = '';
-                    this.refs.loginPassword['value'] = '';
+                    this.refs.signinEmail['value'] = '';
+                    this.refs.signinPassword['value'] = '';
                     this.setState({
-                        loginError: ''
+                        signinError: ''
                     });
                     window.location.replace('app.html');
                 }
             })
             .catch(error => {
                 this.setState({
-                    loginError: error.message
+                    signinError: error.message
                 });
             });
     }
 
-    private handleSubmitRegisterForm(e): void {
+    private handleSubmitSignupForm(e): void {
         e.preventDefault();
 
         const userName: String = this.refs.userName['value'];
@@ -234,17 +240,22 @@ class LoginForm extends React.Component<any, any> {
                     this.refs.password['value'] = '';
                     this.refs.passwordConf['value'] = '';
                     this.setState({
-                        registerError: ''
+                        signupError: ''
                     });
                     window.location.replace('app.html');
                 }
             })
             .catch(error => {
                 this.setState({
-                    registerError: error.message
+                    signupError: error.message
                 });
             });
     }
+
+    private handleClickForgotPassword = (e): void => {
+        e.preventDefault();
+        this.props.switchForm('PasswordReset');
+    };
 }
 
-export default LoginForm;
+export default SigningForm;

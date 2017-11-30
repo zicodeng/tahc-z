@@ -10,9 +10,16 @@ body {
 
 .brand {
     margin: 200px 0;
-    color: $white;
+    color: white;
     h1 {
         margin-bottom: 20px;
         font-size: 75px;
     }
+}
+
+.password-reset-container {
+    position: relative;
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto 100px;
 }
