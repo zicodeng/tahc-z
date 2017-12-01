@@ -14,7 +14,7 @@ class App extends React.Component<any, any> {
         this.state = {
             user: {},
             hasUser: false,
-            option: 'chat',
+            option: 'default',
             sessionToken: '',
             channels: [],
             currentChannelIndex: 0,
