@@ -96,7 +96,7 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 		w.Header().Add(headerContentType, contentTypeJSON)
 		err = json.NewEncoder(w).Encode(results)
 		if err != nil {
-			http.Error(w, "error encoding search results to JSON", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("error encoding search results to JSON: %v", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -352,7 +352,7 @@ func blockRepeatedFailedSignIns(ctx *HandlerContext, email string) error {
 		}
 		err := ctx.AttemptStore.Save(email, initAttempt, attempts.DefaultExpireTime)
 		if err != nil {
-			return fmt.Errorf("error saving data to Redis")
+			return fmt.Errorf("error saving data to Redis: %v", err)
 		}
 	} else {
 		// If there is an existing Attempt stored in Redis,
@@ -364,7 +364,7 @@ func blockRepeatedFailedSignIns(ctx *HandlerContext, email string) error {
 			attempt.Count++
 			err := ctx.AttemptStore.Save(email, attempt, attempts.DefaultExpireTime)
 			if err != nil {
-				return fmt.Errorf("error saving data to Redis")
+				return fmt.Errorf("error saving data to Redis: %v", err)
 			}
 		} else {
 			// If not blocked yet, block it.
@@ -372,7 +372,7 @@ func blockRepeatedFailedSignIns(ctx *HandlerContext, email string) error {
 				attempt.IsBlocked = true
 				err := ctx.AttemptStore.Save(email, attempt, attempts.BlockTime)
 				if err != nil {
-					return fmt.Errorf("error saving data to Redis")
+					return fmt.Errorf("error saving data to Redis: %v", err)
 				}
 			}
 			// If this email is already blocked for further sign-in,
