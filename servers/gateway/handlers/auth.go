@@ -248,16 +248,17 @@ func (ctx *HandlerContext) SessionsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	err = blockRepeatedFailedSignIns(ctx, credentials.Email)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	// Get the user with the provided email from the UserStore.
 	// If not found, respond with an http.StatusUnauthorized error
 	// and the message "invalid credentials".
 	user, err := ctx.UserStore.GetByEmail(credentials.Email)
 	if err != nil {
-		err := blockRepeatedFailedSignIns(ctx, credentials.Email)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
@@ -267,11 +268,6 @@ func (ctx *HandlerContext) SessionsHandler(w http.ResponseWriter, r *http.Reques
 	// and the message "invalid credentials".
 	err = user.Authenticate(credentials.Password)
 	if err != nil {
-		err := blockRepeatedFailedSignIns(ctx, credentials.Email)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
