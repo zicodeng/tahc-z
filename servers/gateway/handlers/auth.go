@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/attempts"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/resetcodes"
@@ -373,7 +374,7 @@ func blockRepeatedFailedSignIns(ctx *HandlerContext, email string) error {
 			}
 			// If this email is already blocked for further sign-in,
 			// report error.
-			return fmt.Errorf("you have already failed sign-in more than 5 times with this email. Please wait for ten minutes or try different email")
+			return errors.New("you have already failed sign-in more than 5 times with this email. Please wait for ten minutes or try different email")
 		}
 	}
 
