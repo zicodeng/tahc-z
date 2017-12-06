@@ -84,7 +84,7 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 
 		results, err = ctx.UserStore.ConvertToUsers(intersection)
 		if err != nil {
-			http.Error(w, "error converting to users", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("error converting to users: %v", err), http.StatusInternalServerError)
 			return
 		}
 
