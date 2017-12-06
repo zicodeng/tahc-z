@@ -48,7 +48,6 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 		tokens := strings.Split(q, " ")
 		intersection := make(map[bson.ObjectId]bool)
 
-		ctx.Trie.Mx.RLock()
 		switch len(tokens) {
 
 		// Single-token searches.
@@ -82,7 +81,6 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 		}
-		ctx.Trie.Mx.RUnlock()
 
 		results, err = ctx.UserStore.ConvertToUsers(intersection)
 		if err != nil {
@@ -141,12 +139,10 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 		}
 
 		// Add this new user to our trie.
-		ctx.Trie.Mx.Lock()
 		ctx.Trie.Insert(user.Email, user.ID)
 		ctx.Trie.Insert(user.UserName, user.ID)
 		ctx.Trie.Insert(user.FirstName, user.ID)
 		ctx.Trie.Insert(user.LastName, user.ID)
-		ctx.Trie.Mx.Unlock()
 
 		beginNewSession(ctx, user, w)
 
@@ -189,10 +185,8 @@ func (ctx *HandlerContext) UsersMeHandler(w http.ResponseWriter, r *http.Request
 		}
 
 		// Remove the user old fields from the trie.
-		ctx.Trie.Mx.Lock()
 		ctx.Trie.Remove(sessionState.User.FirstName, sessionState.User.ID)
 		ctx.Trie.Remove(sessionState.User.LastName, sessionState.User.ID)
-		ctx.Trie.Mx.Unlock()
 
 		// Update in-memory session state.
 		sessionState.User.FirstName = updates.FirstName
@@ -213,10 +207,8 @@ func (ctx *HandlerContext) UsersMeHandler(w http.ResponseWriter, r *http.Request
 		}
 
 		// Insert the updated user fields into the trie.
-		ctx.Trie.Mx.Lock()
 		ctx.Trie.Insert(sessionState.User.FirstName, sessionState.User.ID)
 		ctx.Trie.Insert(sessionState.User.LastName, sessionState.User.ID)
-		ctx.Trie.Mx.Unlock()
 
 		w.Header().Add(headerContentType, contentTypeJSON)
 		err = json.NewEncoder(w).Encode(sessionState.User)
