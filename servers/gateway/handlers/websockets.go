@@ -138,6 +138,7 @@ func (n *Notifier) start() {
 			// it means this connection is lost,
 			// and we need to remove it from the list.
 			if err := c.WriteMessage(websocket.TextMessage, msg); err != nil {
+				c.Close()
 				n.mx.Lock()
 				n.clients = append(n.clients[:i], n.clients[i+1:]...)
 				n.mx.Unlock()
