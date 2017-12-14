@@ -37,7 +37,6 @@ const portNum = parseInt(port);
         // publish information about this microservice every 10 seconds,
         // so that our gateway is guaranteed to get the lastest status
         // about this microservice. If it dies, our gateway will be informed.
-        // Guarantee our MongoDB is started before clients can make any connections.
         const publisher = redis.createClient({
             host: redisAddr
         });
