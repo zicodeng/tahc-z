@@ -108,13 +108,13 @@ func (n *Notifier) AddClient(client *websocket.Conn) {
 		if _, _, err := client.NextReader(); err != nil {
 			client.Close()
 			// Remove it from the list
+			n.mx.Lock()
 			for i, c := range n.clients {
 				if c == client {
-					n.mx.Lock()
 					n.clients = append(n.clients[:i], n.clients[i+1:]...)
-					n.mx.Unlock()
 				}
 			}
+			n.mx.Unlock()
 			break
 		}
 	}
@@ -142,9 +142,7 @@ func (n *Notifier) start() {
 			// and we need to remove it from the list.
 			if err := c.WriteMessage(websocket.TextMessage, msg); err != nil {
 				c.Close()
-				n.mx.Lock()
 				n.clients = append(n.clients[:i], n.clients[i+1:]...)
-				n.mx.Unlock()
 				log.Println(err)
 			}
 		}
