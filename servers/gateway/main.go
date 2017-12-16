@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"time"
 )
 
@@ -190,7 +191,7 @@ func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) 
 			// and add to the list.
 			instances := make(map[string]*handlers.ServiceInstance)
 			instances[svc.Address] = handlers.NewServiceInstance(svc.Address, time.Now())
-			serviceList.Services[svc.Name] = handlers.NewService(svc.Name, svc.PathPattern, svc.Heartbeat, instances)
+			serviceList.Services[svc.Name] = handlers.NewService(svc.Name, regexp.MustCompile(svc.PathPattern), svc.Heartbeat, instances)
 		}
 		serviceList.Mx.Unlock()
 	}

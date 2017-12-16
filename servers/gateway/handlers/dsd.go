@@ -28,22 +28,22 @@ func NewServiceList() *ServiceList {
 // Service represents any microservice our gateway
 // will be received from Redis "microservice" channel.
 type Service struct {
-	Name        string
-	PathPattern string
-	Heartbeat   int // The microservice's normal heartbeat.
+	Name              string
+	PathPatternRegexp *regexp.Regexp
+	Heartbeat         int // The microservice's normal heartbeat.
 	// The key of the Instances map is this instance's unique address.
 	Instances map[string]*ServiceInstance
 	proxy     *httputil.ReverseProxy
 }
 
 // NewService creates a new microservice.
-func NewService(name string, pathPattern string, heartbeat int, instances map[string]*ServiceInstance) *Service {
+func NewService(name string, pathPatternRegexp *regexp.Regexp, heartbeat int, instances map[string]*ServiceInstance) *Service {
 	addrs := []string{}
 	for addr := range instances {
 		addrs = append(addrs, addr)
 	}
 	proxy := newServiceProxy(addrs)
-	return &Service{name, pathPattern, heartbeat, instances, proxy}
+	return &Service{name, pathPatternRegexp, heartbeat, instances, proxy}
 }
 
 // ServiceInstance is an instance of a given microservice.
@@ -97,9 +97,8 @@ func (dsdh *DSDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	dsdh.ServiceList.Mx.RLock()
 	defer dsdh.ServiceList.Mx.RUnlock()
 	for _, svc := range dsdh.ServiceList.Services {
-		pattern := svc.PathPattern
-		re := regexp.MustCompile(pattern)
-		if re.MatchString(r.URL.Path) {
+		pattern := svc.PathPatternRegexp
+		if pattern.MatchString(r.URL.Path) {
 			// addrs := []string{}
 			// for addr := range svc.Instances {
 			// 	addrs = append(addrs, addr)
