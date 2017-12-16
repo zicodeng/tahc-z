@@ -53,7 +53,10 @@ func (wsh *WebSocketsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	// and represent a different client.
 	// So whenever we receive a new request, and ServeHTTP is called,
 	// we need to add that request as a new client to our Notifier's clients field.
-	go wsh.notifier.AddClient(conn)
+	// Note that we don't want to spawn a new goroutine here
+	// because the expectation is that this upgrade request never ends,
+	// as the connection is upgraded into a persistent Websocket connection.
+	wsh.notifier.AddClient(conn)
 }
 
 // Notifier is an object that handles WebSocket notifications.
