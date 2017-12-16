@@ -113,14 +113,12 @@ func (store *MongoStore) Index() *indexes.Trie {
 	// Iterate all users from database one at a time.
 	iter := store.session.DB(store.dbname).C(store.colname).Find(nil).Iter()
 
-	trie.Mx.Lock()
 	for iter.Next(user) {
 		trie.Insert(user.Email, user.ID)
 		trie.Insert(user.UserName, user.ID)
 		trie.Insert(user.LastName, user.ID)
 		trie.Insert(user.FirstName, user.ID)
 	}
-	trie.Mx.Unlock()
 
 	// Report any errors that occurred.
 	if err := iter.Err(); err != nil {
