@@ -156,8 +156,9 @@ type receivedService struct {
 	Heartbeat   int
 }
 
-// Constantly listen for "microservices" Redis channel.
+// Constantly listen for "Microservices" Redis channel.
 func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) {
+	log.Println("Listening for microservices")
 	for {
 		time.Sleep(time.Second)
 
@@ -168,7 +169,7 @@ func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) 
 		svc := &receivedService{}
 		err = json.Unmarshal([]byte(msg.Payload), svc)
 		if err != nil {
-			log.Printf("error unmarshalling received microservice JSON to struct: %v", err)
+			log.Printf("Error unmarshalling received microservice JSON to struct: %v", err)
 		}
 		serviceList.Mx.Lock()
 		_, hasSvc := serviceList.Services[svc.Name]
@@ -182,6 +183,7 @@ func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) 
 				serviceList.Services[svc.Name].Instances[svc.Address].LastHeartbeat = time.Now()
 			} else {
 				// If not, add this instance to our list.
+				log.Printf("Microservice %s: new instance found\n", svc.Name)
 				serviceList.Services[svc.Name].Instances[svc.Address] = handlers.NewServiceInstance(svc.Address, time.Now())
 			}
 
@@ -189,6 +191,7 @@ func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) 
 			// If this microservice is not in our list,
 			// create a new instance of that microservice
 			// and add to the list.
+			log.Printf("New microservice %s found\n", svc.Name)
 			instances := make(map[string]*handlers.ServiceInstance)
 			instances[svc.Address] = handlers.NewServiceInstance(svc.Address, time.Now())
 			serviceList.Services[svc.Name] = handlers.NewService(svc.Name, regexp.MustCompile(svc.PathPattern), svc.Heartbeat, instances)
@@ -198,7 +201,7 @@ func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) 
 }
 
 // Periodically looks for service instances
-// for which you haven't received a heartbeat in a while,
+// for which we haven't received a heartbeat in a while,
 // and remove those instances from your list
 func removeCrashedServices(serviceList *handlers.ServiceList) {
 	for {
@@ -209,11 +212,13 @@ func removeCrashedServices(serviceList *handlers.ServiceList) {
 			svc := serviceList.Services[svcName]
 			for addr, instance := range svc.Instances {
 				if time.Now().Sub(instance.LastHeartbeat).Seconds() > float64(svc.Heartbeat)+10 {
+					log.Printf("Microservice %s: crashed instance removed", svcName)
 					// Remove the crashed microservice instance from the service list.
 					delete(svc.Instances, addr)
 					// Remove the entire microservice from the service list
 					// if it has no instance running.
 					if len(svc.Instances) == 0 {
+						log.Printf("Dangling microservice %s removed\n", svcName)
 						delete(serviceList.Services, svcName)
 					}
 				}
