@@ -99,11 +99,6 @@ func (dsdh *DSDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, svc := range dsdh.ServiceList.Services {
 		pattern := svc.PathPatternRegexp
 		if pattern.MatchString(r.URL.Path) {
-			// addrs := []string{}
-			// for addr := range svc.Instances {
-			// 	addrs = append(addrs, addr)
-			// }
-			// proxy := dsdh.newServiceProxy(addrs)
 			svc.proxy.ServeHTTP(w, r)
 			// Return this function if we find a match,
 			// and request is routed to our microservice.
