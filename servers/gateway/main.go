@@ -160,11 +160,12 @@ type receivedService struct {
 func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) {
 	log.Println("Listening for microservices")
 	for {
-		time.Sleep(time.Second)
-
-		msg, err := pubsub.ReceiveMessage()
+		msg, err := receivePubSubMessage(pubsub)
+		// If there is still an error receiving message even after retries,
+		// return this function.
 		if err != nil {
 			log.Println(err)
+			return
 		}
 		svc := &receivedService{}
 		err = json.Unmarshal([]byte(msg.Payload), svc)
@@ -198,6 +199,27 @@ func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) 
 		}
 		serviceList.Mx.Unlock()
 	}
+}
+
+var maxReceiveMessageRetries = 5
+
+// If there is an error receiving Redis Pub/Sub messages,
+// that's probably because the Redis server is no longer reachable.
+// If that's the case, try to receive the message again for a max number of retries.
+func receivePubSubMessage(pubsub *redis.PubSub) (*redis.Message, error) {
+	var msg *redis.Message
+	var err error
+	for i := 0; i < maxReceiveMessageRetries; i++ {
+		// pubsub.ReceiveMessage() will block until there is a message to receive.
+		msg, err = pubsub.ReceiveMessage()
+		if err == nil {
+			return msg, nil
+		}
+		log.Printf("Error receiving message from Redis Pub/Sub: %s", err)
+		log.Printf("Will try again in %d seconds", i*2)
+		time.Sleep(time.Duration(i*2) * time.Second)
+	}
+	return nil, err
 }
 
 // Periodically looks for service instances
