@@ -14,25 +14,25 @@ import (
 
 // ServiceList contains a list of services.
 type ServiceList struct {
-	Services map[string]*service
+	services map[string]*service
 	mx       sync.RWMutex
 }
 
 // NewServiceList creates a new ServiceList.
 func NewServiceList() *ServiceList {
 	return &ServiceList{
-		Services: make(map[string]*service),
+		services: make(map[string]*service),
 	}
 }
 
 // service represents any microservice our gateway
 // will be received from Redis "microservice" channel.
 type service struct {
-	Name              string
-	PathPatternRegexp *regexp.Regexp
-	Heartbeat         int // The microservice's normal heartbeat.
-	// The key of the Instances map is this instance's unique address.
-	Instances map[string]*serviceInstance
+	name              string
+	pathPatternRegexp *regexp.Regexp
+	heartbeat         int // The microservice's normal heartbeat.
+	// The key of the instances map is this instance's unique address.
+	instances map[string]*serviceInstance
 	proxy     *httputil.ReverseProxy
 }
 
@@ -49,8 +49,8 @@ func newService(name string, pathPatternRegexp *regexp.Regexp, heartbeat int, in
 // serviceInstance is an instance of a given microservice.
 // A microservice might have multiple instances for balancing loads.
 type serviceInstance struct {
-	Address       string
-	LastHeartbeat time.Time
+	address       string
+	lastHeartbeat time.Time
 }
 
 // newServiceInstance creates a new microservice instance.
@@ -70,19 +70,19 @@ type ReceivedService struct {
 // or register a new microservice instance if that microservice already exists in the list.
 func (serviceList *ServiceList) Register(receivedSvc *ReceivedService) {
 	serviceList.mx.Lock()
-	svc, hasSvc := serviceList.Services[receivedSvc.Name]
+	svc, hasSvc := serviceList.services[receivedSvc.Name]
 	// If this microservice is already in our list...
 	if hasSvc {
 		// Check if this specific microservice instance exists in our list by its unique address...
-		instance, hasInstance := svc.Instances[receivedSvc.Address]
+		instance, hasInstance := svc.instances[receivedSvc.Address]
 		if hasInstance {
 			// If this microservice instance is in our list,
 			// update its lastHeartbeat time field.
-			instance.LastHeartbeat = time.Now()
+			instance.lastHeartbeat = time.Now()
 		} else {
 			// If not, add this instance to our list.
 			log.Printf("Microservice %s: new instance found\n", receivedSvc.Name)
-			svc.Instances[receivedSvc.Address] = newServiceInstance(receivedSvc.Address, time.Now())
+			svc.instances[receivedSvc.Address] = newServiceInstance(receivedSvc.Address, time.Now())
 		}
 
 	} else {
@@ -92,7 +92,7 @@ func (serviceList *ServiceList) Register(receivedSvc *ReceivedService) {
 		log.Printf("New microservice %s found\n", receivedSvc.Name)
 		instances := make(map[string]*serviceInstance)
 		instances[receivedSvc.Address] = newServiceInstance(receivedSvc.Address, time.Now())
-		serviceList.Services[receivedSvc.Name] = newService(
+		serviceList.services[receivedSvc.Name] = newService(
 			receivedSvc.Name,
 			regexp.MustCompile(receivedSvc.PathPattern),
 			receivedSvc.Heartbeat,
@@ -106,18 +106,18 @@ func (serviceList *ServiceList) Register(receivedSvc *ReceivedService) {
 // or remove a crashed microservice instance.
 func (serviceList *ServiceList) Remove() {
 	serviceList.mx.Lock()
-	for svcName := range serviceList.Services {
-		svc := serviceList.Services[svcName]
-		for addr, instance := range svc.Instances {
-			if time.Now().Sub(instance.LastHeartbeat).Seconds() > float64(svc.Heartbeat)+10 {
+	for svcName := range serviceList.services {
+		svc := serviceList.services[svcName]
+		for addr, instance := range svc.instances {
+			if time.Now().Sub(instance.lastHeartbeat).Seconds() > float64(svc.heartbeat)+10 {
 				log.Printf("Microservice %s: crashed instance removed", svcName)
 				// Remove the crashed microservice instance from the service list.
-				delete(svc.Instances, addr)
+				delete(svc.instances, addr)
 				// Remove the entire microservice from the service list
 				// if it has no instance running.
-				if len(svc.Instances) == 0 {
+				if len(svc.instances) == 0 {
 					log.Printf("Dangling microservice %s removed\n", svcName)
-					delete(serviceList.Services, svcName)
+					delete(serviceList.services, svcName)
 				}
 			}
 		}
@@ -127,7 +127,7 @@ func (serviceList *ServiceList) Remove() {
 
 // DSDHandler is a dynamic service discovery middleware handler
 // that checks the requested resource path
-// against the pathPattern properties of the Services field.
+// against the pathPattern properties of the services field.
 type DSDHandler struct {
 	Handler     http.Handler
 	ServiceList *ServiceList
@@ -163,8 +163,8 @@ func (dsdh *DSDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// be forwarded to.
 	dsdh.ServiceList.mx.RLock()
 	defer dsdh.ServiceList.mx.RUnlock()
-	for _, svc := range dsdh.ServiceList.Services {
-		pattern := svc.PathPatternRegexp
+	for _, svc := range dsdh.ServiceList.services {
+		pattern := svc.pathPatternRegexp
 		if pattern.MatchString(r.URL.Path) {
 			svc.proxy.ServeHTTP(w, r)
 			// Return this function if we find a match,
