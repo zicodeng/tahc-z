@@ -68,31 +68,36 @@ type ReceivedService struct {
 
 // Register either registers a new microservice if it doesn't exist,
 // or register a new microservice instance if that microservice already exists in the list.
-func (serviceList *ServiceList) Register(svc *ReceivedService) {
+func (serviceList *ServiceList) Register(receivedSvc *ReceivedService) {
 	serviceList.mx.Lock()
-	_, hasSvc := serviceList.Services[svc.Name]
+	svc, hasSvc := serviceList.Services[receivedSvc.Name]
 	// If this microservice is already in our list...
 	if hasSvc {
 		// Check if this specific microservice instance exists in our list by its unique address...
-		_, hasInstance := serviceList.Services[svc.Name].Instances[svc.Address]
+		instance, hasInstance := svc.Instances[receivedSvc.Address]
 		if hasInstance {
 			// If this microservice instance is in our list,
 			// update its lastHeartbeat time field.
-			serviceList.Services[svc.Name].Instances[svc.Address].LastHeartbeat = time.Now()
+			instance.LastHeartbeat = time.Now()
 		} else {
 			// If not, add this instance to our list.
-			log.Printf("Microservice %s: new instance found\n", svc.Name)
-			serviceList.Services[svc.Name].Instances[svc.Address] = newServiceInstance(svc.Address, time.Now())
+			log.Printf("Microservice %s: new instance found\n", receivedSvc.Name)
+			svc.Instances[receivedSvc.Address] = newServiceInstance(receivedSvc.Address, time.Now())
 		}
 
 	} else {
 		// If this microservice is not in our list,
 		// create a new instance of that microservice
 		// and add to the list.
-		log.Printf("New microservice %s found\n", svc.Name)
+		log.Printf("New microservice %s found\n", receivedSvc.Name)
 		instances := make(map[string]*serviceInstance)
-		instances[svc.Address] = newServiceInstance(svc.Address, time.Now())
-		serviceList.Services[svc.Name] = newService(svc.Name, regexp.MustCompile(svc.PathPattern), svc.Heartbeat, instances)
+		instances[receivedSvc.Address] = newServiceInstance(receivedSvc.Address, time.Now())
+		serviceList.Services[receivedSvc.Name] = newService(
+			receivedSvc.Name,
+			regexp.MustCompile(receivedSvc.PathPattern),
+			receivedSvc.Heartbeat,
+			instances,
+		)
 	}
 	serviceList.mx.Unlock()
 }
