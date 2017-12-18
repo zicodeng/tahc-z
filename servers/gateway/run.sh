@@ -6,9 +6,10 @@ set -e
 # Linux machine expects file with LF line endings instead of CRLF.
 # Make sure the file is saved with appropriate line endings.
 
-export API_CONTAINER=info-344-api
+export GATEWAY_CONTAINER=info-344-gateway
 export REDIS_CONTAINER=redis-server
 export MONGO_CONTAINER=mongo-server
+
 export APP_NETWORK=appnet
 export DBNAME="info_344"
 
@@ -21,12 +22,16 @@ export ADDR=:443
 export REDISADDR=$REDIS_CONTAINER:6379
 export DBADDR=$MONGO_CONTAINER:27017
 
+# Microservice addresses.
+export MESSAGESVCADDR=info-344-messaging:80
+export SUMMARYSVCADDR=info-344-summary:80
+
 # Make sure to get the latest image.
-docker pull zicodeng/info-344-api
+docker pull zicodeng/$GATEWAY_CONTAINER
 
 # Remove the old containers first.
-if [ "$(docker ps -aq --filter name=$API_CONTAINER)" ]; then
-    docker rm -f $API_CONTAINER
+if [ "$(docker ps -aq --filter name=$GATEWAY_CONTAINER)" ]; then
+    docker rm -f $GATEWAY_CONTAINER
 fi
 
 if [ "$(docker ps -aq --filter name=$REDIS_CONTAINER)" ]; then
@@ -58,7 +63,7 @@ docker run \
 --restart unless-stopped \
 redis
 
-# Run Mongo Docker container.
+# Run Mongo Docker container inside our appnet private network.
 docker run \
 -d \
 -e MONGO_INITDB_DATABASE=$DBNAME \
@@ -67,11 +72,11 @@ docker run \
 --restart unless-stopped \
 drstearns/mongo1kusers
 
-# Run Info 344 API Docker container.
+# Run Info 344 API Gateway Docker container inside our appnet private network.
 docker run \
 -d \
 -p 443:443 \
---name info-344-api \
+--name $GATEWAY_CONTAINER \
 --network $APP_NETWORK \
 -v /etc/letsencrypt:/etc/letsencrypt:ro \
 -e TLSCERT=$TLSCERT \
@@ -80,5 +85,7 @@ docker run \
 -e ADDR=$ADDR \
 -e REDISADDR=$REDISADDR \
 -e DBADDR=$DBADDR \
+-e MESSAGESVCADDR=$MESSAGESVCADDR \
+-e SUMMARYSVCADDR=$SUMMARYSVCADDR \
 --restart unless-stopped \
-zicodeng/info-344-api
+zicodeng/$GATEWAY_CONTAINER

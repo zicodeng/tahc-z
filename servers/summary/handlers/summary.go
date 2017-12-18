@@ -52,13 +52,6 @@ type PageSummary struct {
 // a JSON-encoded PageSummary struct containing the page summary
 // meta-data.
 func SummaryHandler(w http.ResponseWriter, r *http.Request) {
-	// Add an HTTP header to the response with the name
-	// "Access-Control-Allow-Origin" and a value of "*".
-	// This will allow cross-origin AJAX requests to your server.
-	w.Header().Add(headerAccessControlAllowOrigin, "*")
-
-	w.Header().Add(headerContentType, contentTypeJSON)
-
 	// Get the `url` query string parameter value from the request.
 	// If not supplied, respond with an http.StatusBadRequest error.
 	pageURL := r.URL.Query().Get("url")
@@ -66,7 +59,6 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no query found in the requested URL", http.StatusBadRequest)
 		return
 	}
-
 	// Call fetchHTML() to fetch the requested URL.
 	htmlStream, err := fetchHTML(pageURL)
 	if err != nil {
@@ -83,6 +75,7 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Add("Content-Type", "application/json")
 	// Finally, respond with a JSON-encoded version of the PageSummary
 	// struct. That way the client can easily parse the JSON back into
 	// an object.

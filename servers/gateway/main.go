@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/go-redis/redis"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/handlers"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/attempts"
@@ -14,7 +15,7 @@ import (
 	"time"
 )
 
-//main is the main entry point for the server
+// main is the main entry point for the server.
 func main() {
 	// Read the ADDR environment variable to get the address
 	// the server should listen on. If empty, default to ":443".
@@ -47,6 +48,12 @@ func main() {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: redisAddr,
 	})
+	pubsub := redisClient.Subscribe("microservices")
+
+	serviceList := handlers.NewServiceList()
+	go listenForServices(pubsub, serviceList)
+	// Remove crashed microservices.
+	go removeCrashedServices(serviceList)
 
 	// Redis store for storing SessionState.
 	sessionStore := sessions.NewRedisStore(redisClient, time.Hour)
@@ -77,13 +84,24 @@ func main() {
 	// Initialize HandlerContext.
 	ctx := handlers.NewHandlerContext(sessionKey, trie, sessionStore, userStore, attemptStore, resetCodeStore)
 
+	// Messaging microservice addresses.
+	// msgAddrs := os.Getenv("MESSAGESVCADDR")
+	// if len(msgAddrs) == 0 {
+	// 	log.Fatal("Please set MESSAGESVCADDR environment variables")
+	// }
+	// msgAddrSlice := strings.Split(msgAddrs, ",")
+
+	// // Summary microservice addresses.
+	// sumAddrs := os.Getenv("SUMMARYSVCADDR")
+	// if len(sumAddrs) == 0 {
+	// 	log.Fatal("Please set SUMMARYSVCADDR environment variables")
+	// }
+	// sumAddrSlice := strings.Split(sumAddrs, ",")
+
 	// Create a new mux for the web server.
 	mux := http.NewServeMux()
 
-	// Tell the mux to call your handlers.SummaryHandler function
-	// when the "/v1/summary" URL path is requested.
-	mux.HandleFunc("/v1/summary", handlers.SummaryHandler)
-
+	// Gateway
 	mux.HandleFunc("/v1/users", ctx.UsersHandler)
 	mux.HandleFunc("/v1/users/me", ctx.UsersMeHandler)
 
@@ -93,8 +111,25 @@ func main() {
 	mux.HandleFunc("/v1/resetcodes", ctx.ResetCodesHandler)
 	mux.HandleFunc("/v1/passwords", ctx.ResetPasswordHandler)
 
+	// Hard-code the network addresses where our microservice instances
+	// are listening into environment variables the gateway reads at startup.
+	// This is an easy way to get started,
+	// but it doesn't make it easy to dynamically add
+	// new instances of an existing microservice, or entirely new microservices.
+
+	// Messaging microservice.
+	// mux.Handle("/v1/channels", newServiceProxy(msgAddrSlice, ctx))
+	// mux.Handle("/v1/channels/", newServiceProxy(msgAddrSlice, ctx))
+	// mux.Handle("/v1/messages/", newServiceProxy(msgAddrSlice, ctx))
+
+	// Summary microservice.
+	// mux.Handle("/v1/summary", newServiceProxy(sumAddrSlice, ctx))
+
+	// Chained middlewares.
+	// Wraps mux inside DSDHandler.
+	dsdMux := handlers.NewDSDHandler(mux, serviceList, ctx)
 	// Wraps mux inside CORSHandler.
-	corsMux := handlers.NewCORSHandler(mux)
+	corsMux := handlers.NewCORSHandler(dsdMux)
 
 	// Start a web server listening on the address you read from
 	// the environment variable, using the mux you created as
@@ -102,4 +137,76 @@ func main() {
 	// that occur when trying to start the web server.
 	log.Printf("Server is listening at https://%s\n", addr)
 	log.Fatal(http.ListenAndServeTLS(addr, tlscert, tlskey, corsMux))
+}
+
+// Constantly listen for "microservices" Redis channel.
+func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) {
+	for {
+		time.Sleep(time.Second)
+
+		msg, err := pubsub.ReceiveMessage()
+		if err != nil {
+			log.Println(err)
+		}
+		svc := &receivedService{}
+		err = json.Unmarshal([]byte(msg.Payload), svc)
+		if err != nil {
+			log.Printf("error unmarshalling received microservice JSON to struct: %v", err)
+		}
+		serviceList.Mx.Lock()
+		_, hasSvc := serviceList.Services[svc.Name]
+		// If this microservice is already in our list...
+		if hasSvc {
+			// Check if this specific microservice instance exists in our list by its unique address...
+			_, hasInstance := serviceList.Services[svc.Name].Instances[svc.Address]
+			if hasInstance {
+				// If this microservice instance is in our list,
+				// update its lastHeartbeat time field.
+				serviceList.Services[svc.Name].Instances[svc.Address].LastHeartbeat = time.Now()
+			} else {
+				// If not, add this instance to our list.
+				serviceList.Services[svc.Name].Instances[svc.Address] = handlers.NewServiceInstance(svc.Address, time.Now())
+			}
+
+		} else {
+			// If this microservice is not in our list,
+			// create a new instance of that microservice
+			// and add to the list.
+			instances := make(map[string]*handlers.ServiceInstance)
+			instances[svc.Address] = handlers.NewServiceInstance(svc.Address, time.Now())
+			serviceList.Services[svc.Name] = handlers.NewService(svc.Name, svc.PathPattern, svc.Heartbeat, instances)
+		}
+		serviceList.Mx.Unlock()
+	}
+}
+
+// Periodically looks for service instances
+// for which you haven't received a heartbeat in a while,
+// and remove those instances from your list
+func removeCrashedServices(serviceList *handlers.ServiceList) {
+	for _ = range time.Tick(time.Second * 10) {
+		serviceList.Mx.Lock()
+		for svcName := range serviceList.Services {
+			svc := serviceList.Services[svcName]
+			for addr, instance := range svc.Instances {
+				if time.Now().Sub(instance.LastHeartbeat).Seconds() > float64(svc.Heartbeat)+10 {
+					// Remove the crashed microservice instance from the service list.
+					delete(svc.Instances, addr)
+					// Remove the entire microservice from the service list
+					// if it has no instance running.
+					if len(svc.Instances) == 0 {
+						delete(serviceList.Services, svcName)
+					}
+				}
+			}
+		}
+		serviceList.Mx.Unlock()
+	}
+}
+
+type receivedService struct {
+	Name        string
+	PathPattern string
+	Address     string
+	Heartbeat   int
 }
