@@ -30,4 +30,4 @@ A chat app that allows users to sign in/sign up, update profile, search users, c
 
 ## Software Architecture
 
-![Software Architecture](./software-architecture.png" "Software Architecture")
+![Software Architecture](https://github.com/zicodeng/tahc-z/software-architecture.png" "Software Architecture")
