@@ -8,6 +8,7 @@ import (
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/resetcodes"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/users"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/sessions"
+	"github.com/streadway/amqp"
 	"gopkg.in/mgo.v2"
 	"log"
 	"net/http"
@@ -111,6 +112,14 @@ func main() {
 	mux.HandleFunc("/v1/resetcodes", ctx.ResetCodesHandler)
 	mux.HandleFunc("/v1/passwords", ctx.ResetPasswordHandler)
 
+	notifier := handlers.NewNotifier()
+	mux.Handle("/v1/ws", ctx.NewWebSocketsHandler(notifier))
+	mqAddr := os.Getenv("MQADDR")
+	if len(mqAddr) == 0 {
+		log.Fatal("Please set the MQADDR variable to the address of your MQ server")
+	}
+	go listenToMQ(mqAddr, notifier)
+
 	// Hard-code the network addresses where our microservice instances
 	// are listening into environment variables the gateway reads at startup.
 	// This is an easy way to get started,
@@ -139,74 +148,106 @@ func main() {
 	log.Fatal(http.ListenAndServeTLS(addr, tlscert, tlskey, corsMux))
 }
 
-// Constantly listen for "microservices" Redis channel.
+// Constantly listen for "Microservices" Redis channel.
 func listenForServices(pubsub *redis.PubSub, serviceList *handlers.ServiceList) {
+	log.Println("Listening for microservices")
 	for {
-		time.Sleep(time.Second)
-
-		msg, err := pubsub.ReceiveMessage()
+		msg, err := receivePubSubMessage(pubsub)
+		// If there is still an error receiving message even after retries,
+		// return this function.
 		if err != nil {
 			log.Println(err)
+			return
 		}
-		svc := &receivedService{}
+		svc := &handlers.ReceivedService{}
 		err = json.Unmarshal([]byte(msg.Payload), svc)
 		if err != nil {
-			log.Printf("error unmarshalling received microservice JSON to struct: %v", err)
+			log.Printf("Error unmarshalling received microservice JSON to struct: %v", err)
 		}
-		serviceList.Mx.Lock()
-		_, hasSvc := serviceList.Services[svc.Name]
-		// If this microservice is already in our list...
-		if hasSvc {
-			// Check if this specific microservice instance exists in our list by its unique address...
-			_, hasInstance := serviceList.Services[svc.Name].Instances[svc.Address]
-			if hasInstance {
-				// If this microservice instance is in our list,
-				// update its lastHeartbeat time field.
-				serviceList.Services[svc.Name].Instances[svc.Address].LastHeartbeat = time.Now()
-			} else {
-				// If not, add this instance to our list.
-				serviceList.Services[svc.Name].Instances[svc.Address] = handlers.NewServiceInstance(svc.Address, time.Now())
-			}
-
-		} else {
-			// If this microservice is not in our list,
-			// create a new instance of that microservice
-			// and add to the list.
-			instances := make(map[string]*handlers.ServiceInstance)
-			instances[svc.Address] = handlers.NewServiceInstance(svc.Address, time.Now())
-			serviceList.Services[svc.Name] = handlers.NewService(svc.Name, svc.PathPattern, svc.Heartbeat, instances)
-		}
-		serviceList.Mx.Unlock()
+		serviceList.Register(svc)
 	}
+}
+
+var maxReceiveMessageRetries = 5
+
+// If there is an error receiving Redis Pub/Sub messages,
+// that's probably because the Redis server is no longer reachable.
+// If that's the case, try to receive the message again for a max number of retries.
+func receivePubSubMessage(pubsub *redis.PubSub) (*redis.Message, error) {
+	var msg *redis.Message
+	var err error
+	for i := 0; i < maxReceiveMessageRetries; i++ {
+		// pubsub.ReceiveMessage() will block until there is a message to receive.
+		msg, err = pubsub.ReceiveMessage()
+		if err == nil {
+			return msg, nil
+		}
+		log.Printf("Error receiving message from Redis Pub/Sub: %s", err)
+		log.Printf("Will try again in %d seconds", i*2)
+		time.Sleep(time.Duration(i*2) * time.Second)
+	}
+	return nil, err
 }
 
 // Periodically looks for service instances
-// for which you haven't received a heartbeat in a while,
+// for which we haven't received a heartbeat in a while,
 // and remove those instances from your list
 func removeCrashedServices(serviceList *handlers.ServiceList) {
-	for _ = range time.Tick(time.Second * 10) {
-		serviceList.Mx.Lock()
-		for svcName := range serviceList.Services {
-			svc := serviceList.Services[svcName]
-			for addr, instance := range svc.Instances {
-				if time.Now().Sub(instance.LastHeartbeat).Seconds() > float64(svc.Heartbeat)+10 {
-					// Remove the crashed microservice instance from the service list.
-					delete(svc.Instances, addr)
-					// Remove the entire microservice from the service list
-					// if it has no instance running.
-					if len(svc.Instances) == 0 {
-						delete(serviceList.Services, svcName)
-					}
-				}
-			}
-		}
-		serviceList.Mx.Unlock()
+	for {
+		time.Sleep(time.Second * 10)
+		serviceList.Remove()
 	}
 }
 
-type receivedService struct {
-	Name        string
-	PathPattern string
-	Address     string
-	Heartbeat   int
+const maxConnRetries = 5
+const qName = "testQ"
+
+func listenToMQ(addr string, notifier *handlers.Notifier) {
+	conn, err := connectToMQ(addr)
+	if err != nil {
+		log.Fatalf("error connecting to MQ server: %s", err)
+	}
+	log.Printf("connected to MQ server")
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("error opening channel: %v", err)
+	}
+	log.Println("created MQ channel")
+	defer ch.Close()
+
+	q, err := ch.QueueDeclare(qName, false, false, false, false, nil)
+	if err != nil {
+		log.Fatalf("error declaring queue: %v", err)
+	}
+	log.Println("declared MQ queue")
+	messages, err := ch.Consume(q.Name, "", true, false, false, false, nil)
+	if err != nil {
+		log.Fatalf("error listening to queue: %v", err)
+	}
+	log.Println("listening for new MQ messages...")
+	for msg := range messages {
+		// log.Printf("new message id %s received from MQ", string(msg.Body))
+		// Load messages received from RabbitMQ's eventQ channel to
+		// notifier's eventQ channel, so that messages will be
+		// broadcasted to all clients throught websocket.
+		notifier.Notify(msg.Body)
+	}
+}
+
+func connectToMQ(addr string) (*amqp.Connection, error) {
+	mqURL := "amqp://" + addr
+	var conn *amqp.Connection
+	var err error
+	for i := 1; i <= maxConnRetries; i++ {
+		conn, err = amqp.Dial(mqURL)
+		if err == nil {
+			return conn, nil
+		}
+		log.Printf("error connecting to MQ server at %s: %s", mqURL, err)
+		log.Printf("will attempt another connection in %d seconds", i*2)
+		time.Sleep(time.Duration(i*2) * time.Second)
+	}
+	return nil, err
 }

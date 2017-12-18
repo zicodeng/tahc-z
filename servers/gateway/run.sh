@@ -9,6 +9,7 @@ set -e
 export GATEWAY_CONTAINER=info-344-gateway
 export REDIS_CONTAINER=redis-server
 export MONGO_CONTAINER=mongo-server
+export MQ_CONTAINER=rabbitmq-server
 
 export APP_NETWORK=appnet
 export DBNAME="info_344"
@@ -21,6 +22,7 @@ export SESSIONKEY=secretsigningkey
 export ADDR=:443
 export REDISADDR=$REDIS_CONTAINER:6379
 export DBADDR=$MONGO_CONTAINER:27017
+export MQADDR=$MQ_CONTAINER:5672
 
 # Microservice addresses.
 export MESSAGESVCADDR=info-344-messaging:80
@@ -40,6 +42,10 @@ fi
 
 if [ "$(docker ps -aq --filter name=$MONGO_CONTAINER)" ]; then
     docker rm -f $MONGO_CONTAINER
+fi
+
+if [ "$(docker ps -aq --filter name=$MQ_CONTAINER)" ]; then
+    docker rm -f $MQ_CONTAINER
 fi
 
 # Remove dangling images.
@@ -72,6 +78,15 @@ docker run \
 --restart unless-stopped \
 drstearns/mongo1kusers
 
+# Run RabbitMQ Docker container.
+docker run \
+-d \
+-p 5672:5672 \
+--network $APP_NETWORK \
+--name $MQ_CONTAINER \
+--hostname $MQ_CONTAINER \
+rabbitmq
+
 # Run Info 344 API Gateway Docker container inside our appnet private network.
 docker run \
 -d \
@@ -85,6 +100,7 @@ docker run \
 -e ADDR=$ADDR \
 -e REDISADDR=$REDISADDR \
 -e DBADDR=$DBADDR \
+-e MQADDR=$MQADDR \
 -e MESSAGESVCADDR=$MESSAGESVCADDR \
 -e SUMMARYSVCADDR=$SUMMARYSVCADDR \
 --restart unless-stopped \

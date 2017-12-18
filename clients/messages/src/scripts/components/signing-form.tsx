@@ -18,7 +18,7 @@ class SigningForm extends React.Component<any, any> {
                     this.state.isSignup ? 'signing-form-container active' : 'signing-form-container'
                 }
             >
-                <div className="material-form" />
+                <div className="material-form material-form--background-card" />
                 <div className="material-form">
                     <h1 className="title">Sign In</h1>
                     <form onSubmit={e => this.handleSubmitSigninForm(e)}>

@@ -1,0 +1,21 @@
+.overlay {
+    width: 100vw;
+    height: 100vw;
+    position: fixed;
+    background-color: $black;
+    opacity: 0.8;
+    z-index: 1;
+    display: none;
+    cursor: pointer;
+    &.active {
+        display: block;
+    }
+}
+
+.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    @include transform(translate(-50%, -50%));
+}

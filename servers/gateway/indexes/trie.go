@@ -25,7 +25,9 @@ func NewTrie() *Trie {
 func (trie *Trie) Insert(key string, userID bson.ObjectId) {
 	// Make all keys lowercase, so our search is case-insensitive.
 	key = strings.ToLower(key)
+	trie.Mx.Lock()
 	trie.root.insert(key, userID)
+	trie.Mx.Unlock()
 }
 
 // Search retrieves the first n values that match a given prefix string from the trie.
@@ -34,6 +36,10 @@ func (trie *Trie) Insert(key string, userID bson.ObjectId) {
 // and then do a recursive depth-first search to
 // find the first n values in that branch.
 func (trie *Trie) Search(n int, prefix string) map[bson.ObjectId]bool {
+
+	trie.Mx.RLock()
+	defer trie.Mx.RUnlock()
+
 	// results is a set that only contains unique userID.
 	results := make(map[bson.ObjectId]bool)
 
@@ -69,7 +75,9 @@ func (trie *Trie) Search(n int, prefix string) map[bson.ObjectId]bool {
 // where key is a word and value is user ID.
 func (trie *Trie) Remove(key string, value bson.ObjectId) {
 	key = strings.ToLower(key)
+	trie.Mx.Lock()
 	trie.root.remove(key, value)
+	trie.Mx.Unlock()
 }
 
 // node represents a single node in the trie.

@@ -1,0 +1,67 @@
+.fab {
+    $size: 50px;
+    width: $size;
+    height: $size;
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background-color: $red;
+    box-shadow: $card-shadow;
+    @include border-radius($size);
+    ul {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        width: 500px;
+        position: absolute;
+        bottom: 30px;
+        right: 0;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(0%);
+        transition: all 0.3s ease-in-out;
+        &.active {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(-20px);
+        }
+        li {
+            padding: 10px;
+            background-color: $blue;
+            margin-bottom: 20px;
+            border-radius: 50px;
+            color: white;
+            box-shadow: $card-shadow;
+            cursor: pointer;
+            &.new-channel {
+                background-color: $red;
+            }
+        }
+    }
+}
+
+.plus {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    transition: all .3s ease-in-out;
+    cursor: pointer;
+    &.active {
+        @include transform(rotate(135deg))
+    }
+    &__bar {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        background-color: white;
+        @include transform(translate(-50%, -50%));
+        &--vertical {
+            width: 2px;
+            height: 25px;
+        }
+        &--horizontal {
+            width: 25px;
+            height: 2px;
+        }
+    }
+}

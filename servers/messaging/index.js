@@ -10,6 +10,11 @@ const MessageStore = require('./models/messages/message-store');
 const redis = require('redis');
 const redisAddr = process.env.REDISADDR || '192.168.99.100';
 
+const amqp = require('amqplib');
+const qName = 'testQ';
+const mqAddr = process.env.MQADDR || '192.168.99.100:5672';
+const mqURL = `amqp://${mqAddr}`;
+
 const express = require('express');
 const app = express();
 const morgan = require('morgan');
@@ -32,7 +37,6 @@ const portNum = parseInt(port);
         // publish information about this microservice every 10 seconds,
         // so that our gateway is guaranteed to get the lastest status
         // about this microservice. If it dies, our gateway will be informed.
-        // Guarantee our MongoDB is started before clients can make any connections.
         const publisher = redis.createClient({
             host: redisAddr
         });
@@ -68,6 +72,16 @@ const portNum = parseInt(port);
             // Invoke next chained handler if the user is authenticated.
             next();
         });
+
+        // Connect to RabbitMQ.
+        let connection = await amqp.connect(mqURL);
+        let mqChannel = await connection.createChannel();
+        // Durable queue writes messages to disk.
+        // So even our MQ server dies,
+        // the information is saved on disk and not lost.
+        let qConf = await mqChannel.assertQueue(qName, { durable: false });
+        app.set('mqChannel', mqChannel);
+        app.set('qName', qName);
 
         // Initialize Mongo stores.
         let channelStore = new ChannelStore(db, 'channels');

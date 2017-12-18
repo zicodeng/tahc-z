@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/attempts"
 	"github.com/info344-a17/challenges-zicodeng/servers/gateway/models/resetcodes"
@@ -47,7 +48,6 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 		tokens := strings.Split(q, " ")
 		intersection := make(map[bson.ObjectId]bool)
 
-		ctx.Trie.Mx.RLock()
 		switch len(tokens) {
 
 		// Single-token searches.
@@ -81,11 +81,10 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 		}
-		ctx.Trie.Mx.RUnlock()
 
 		results, err = ctx.UserStore.ConvertToUsers(intersection)
 		if err != nil {
-			http.Error(w, "error converting to users", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("error converting to users: %v", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -96,7 +95,7 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 		w.Header().Add(headerContentType, contentTypeJSON)
 		err = json.NewEncoder(w).Encode(results)
 		if err != nil {
-			http.Error(w, "error encoding search results to JSON", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("error encoding search results to JSON: %v", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -140,12 +139,10 @@ func (ctx *HandlerContext) UsersHandler(w http.ResponseWriter, r *http.Request) 
 		}
 
 		// Add this new user to our trie.
-		ctx.Trie.Mx.Lock()
 		ctx.Trie.Insert(user.Email, user.ID)
 		ctx.Trie.Insert(user.UserName, user.ID)
 		ctx.Trie.Insert(user.FirstName, user.ID)
 		ctx.Trie.Insert(user.LastName, user.ID)
-		ctx.Trie.Mx.Unlock()
 
 		beginNewSession(ctx, user, w)
 
@@ -188,10 +185,8 @@ func (ctx *HandlerContext) UsersMeHandler(w http.ResponseWriter, r *http.Request
 		}
 
 		// Remove the user old fields from the trie.
-		ctx.Trie.Mx.Lock()
 		ctx.Trie.Remove(sessionState.User.FirstName, sessionState.User.ID)
 		ctx.Trie.Remove(sessionState.User.LastName, sessionState.User.ID)
-		ctx.Trie.Mx.Unlock()
 
 		// Update in-memory session state.
 		sessionState.User.FirstName = updates.FirstName
@@ -212,10 +207,8 @@ func (ctx *HandlerContext) UsersMeHandler(w http.ResponseWriter, r *http.Request
 		}
 
 		// Insert the updated user fields into the trie.
-		ctx.Trie.Mx.Lock()
 		ctx.Trie.Insert(sessionState.User.FirstName, sessionState.User.ID)
 		ctx.Trie.Insert(sessionState.User.LastName, sessionState.User.ID)
-		ctx.Trie.Mx.Unlock()
 
 		w.Header().Add(headerContentType, contentTypeJSON)
 		err = json.NewEncoder(w).Encode(sessionState.User)
@@ -248,16 +241,17 @@ func (ctx *HandlerContext) SessionsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	err = blockRepeatedFailedSignIns(ctx, credentials.Email)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	// Get the user with the provided email from the UserStore.
 	// If not found, respond with an http.StatusUnauthorized error
 	// and the message "invalid credentials".
 	user, err := ctx.UserStore.GetByEmail(credentials.Email)
 	if err != nil {
-		err := blockRepeatedFailedSignIns(ctx, credentials.Email)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
@@ -267,11 +261,6 @@ func (ctx *HandlerContext) SessionsHandler(w http.ResponseWriter, r *http.Reques
 	// and the message "invalid credentials".
 	err = user.Authenticate(credentials.Password)
 	if err != nil {
-		err := blockRepeatedFailedSignIns(ctx, credentials.Email)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
@@ -352,7 +341,7 @@ func blockRepeatedFailedSignIns(ctx *HandlerContext, email string) error {
 		}
 		err := ctx.AttemptStore.Save(email, initAttempt, attempts.DefaultExpireTime)
 		if err != nil {
-			return fmt.Errorf("error saving data to Redis")
+			return fmt.Errorf("error saving data to Redis: %v", err)
 		}
 	} else {
 		// If there is an existing Attempt stored in Redis,
@@ -364,7 +353,7 @@ func blockRepeatedFailedSignIns(ctx *HandlerContext, email string) error {
 			attempt.Count++
 			err := ctx.AttemptStore.Save(email, attempt, attempts.DefaultExpireTime)
 			if err != nil {
-				return fmt.Errorf("error saving data to Redis")
+				return fmt.Errorf("error saving data to Redis: %v", err)
 			}
 		} else {
 			// If not blocked yet, block it.
@@ -372,12 +361,12 @@ func blockRepeatedFailedSignIns(ctx *HandlerContext, email string) error {
 				attempt.IsBlocked = true
 				err := ctx.AttemptStore.Save(email, attempt, attempts.BlockTime)
 				if err != nil {
-					return fmt.Errorf("error saving data to Redis")
+					return fmt.Errorf("error saving data to Redis: %v", err)
 				}
 			}
 			// If this email is already blocked for further sign-in,
 			// report error.
-			return fmt.Errorf("you have already failed sign-in more than 5 times with this email. Please wait for ten minutes or try different email")
+			return errors.New("you have already failed sign-in more than 5 times with this email. Please wait for ten minutes or try different email")
 		}
 	}
 
