@@ -81,15 +81,15 @@ func (serviceList *ServiceList) Register(receivedSvc *ReceivedService) {
 			instance.lastHeartbeat = time.Now()
 		} else {
 			// If not, add this instance to our list.
-			log.Printf("Microservice %s: new instance found\n", receivedSvc.Name)
+			log.Printf("Microservice %s: new instance with address %s found\n", receivedSvc.Name, receivedSvc.Address)
 			svc.instances[receivedSvc.Address] = newServiceInstance(receivedSvc.Address, time.Now())
 		}
-
 	} else {
 		// If this microservice is not in our list,
 		// create a new instance of that microservice
 		// and add to the list.
 		log.Printf("New microservice %s found\n", receivedSvc.Name)
+		log.Printf("Microservice %s: new instance with address %s found\n", receivedSvc.Name, receivedSvc.Address)
 		instances := make(map[string]*serviceInstance)
 		instances[receivedSvc.Address] = newServiceInstance(receivedSvc.Address, time.Now())
 		serviceList.services[receivedSvc.Name] = newService(
@@ -110,7 +110,7 @@ func (serviceList *ServiceList) Remove() {
 		svc := serviceList.services[svcName]
 		for addr, instance := range svc.instances {
 			if time.Now().Sub(instance.lastHeartbeat).Seconds() > float64(svc.heartbeat)+10 {
-				log.Printf("Microservice %s: crashed instance removed", svcName)
+				log.Printf("Microservice %s: crashed instance with address %s removed", svcName, addr)
 				// Remove the crashed microservice instance from the service list.
 				delete(svc.instances, addr)
 				// Remove the entire microservice from the service list
