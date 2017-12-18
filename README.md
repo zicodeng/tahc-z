@@ -1,7 +1,5 @@
 # TAHC-Z
 
-## Overview
-
 A chat app that allows users to sign in/sign up, update profile, search users, create channels, and chat in real-time.
 
 ## Core Technologies
@@ -30,4 +28,4 @@ A chat app that allows users to sign in/sign up, update profile, search users, c
 
 ## Software Architecture
 
-![Software Architecture](https://github.com/zicodeng/tahc-z/blob/master/software-architecture.png" "Software Architecture")
+![Software Architecture](https://raw.githubusercontent.com/zicodeng/tahc-z/master/software-architecture.png "Software Architecture")
