@@ -37,7 +37,11 @@ type service struct {
 }
 
 // newService creates a new microservice.
-func newService(name string, pathPatternRegexp *regexp.Regexp, heartbeat int, instances map[string]*serviceInstance) *service {
+func newService(
+	name string,
+	pathPatternRegexp *regexp.Regexp,
+	heartbeat int,
+	instances map[string]*serviceInstance) *service {
 	addrs := []string{}
 	for addr := range instances {
 		addrs = append(addrs, addr)
@@ -106,8 +110,13 @@ func (serviceList *ServiceList) Register(receivedSvc *ReceivedService) {
 // or remove a crashed microservice instance.
 func (serviceList *ServiceList) Remove() {
 	serviceList.mx.Lock()
-	for svcName := range serviceList.services {
-		svc := serviceList.services[svcName]
+	defer serviceList.mx.Unlock()
+
+	if len(serviceList.services) == 0 {
+		return
+	}
+
+	for svcName, svc := range serviceList.services {
 		for addr, instance := range svc.instances {
 			if time.Now().Sub(instance.lastHeartbeat).Seconds() > float64(svc.heartbeat)+10 {
 				log.Printf("Microservice %s: crashed instance with address %s removed", svcName, addr)
@@ -122,16 +131,15 @@ func (serviceList *ServiceList) Remove() {
 			}
 		}
 	}
-	serviceList.mx.Unlock()
 }
 
 // DSDHandler is a dynamic service discovery middleware handler
 // that checks the requested resource path
 // against the pathPattern properties of the services field.
 type DSDHandler struct {
-	Handler     http.Handler
-	ServiceList *ServiceList
-	Context     *HandlerContext
+	handler     http.Handler
+	serviceList *ServiceList
+	ctx         *HandlerContext
 }
 
 // NewDSDHandler wraps another handler into DSDHandler.
@@ -161,22 +169,23 @@ func (dsdh *DSDHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Use the received microservice path pattern
 	// to determine which microservice should this requset
 	// be forwarded to.
-	dsdh.ServiceList.mx.RLock()
-	defer dsdh.ServiceList.mx.RUnlock()
-	for _, svc := range dsdh.ServiceList.services {
+	dsdh.serviceList.mx.RLock()
+	for _, svc := range dsdh.serviceList.services {
 		pattern := svc.pathPatternRegexp
 		if pattern.MatchString(r.URL.Path) {
+			dsdh.serviceList.mx.RUnlock()
 			svc.proxy.ServeHTTP(w, r)
 			// Return this function if we find a match,
 			// and request is routed to our microservice.
 			return
 		}
 	}
+	dsdh.serviceList.mx.RUnlock()
 
-	// If no match is not found,
+	// If no match is found,
 	// it means this request should not be forwarded to any microservices,
 	// just call our real handler to handle it.
-	dsdh.Handler.ServeHTTP(w, r)
+	dsdh.handler.ServeHTTP(w, r)
 }
 
 // newServiceProxy forwards relevant requests to microservices based on resource path.
@@ -197,7 +206,7 @@ func newServiceProxy(addrs []string) *httputil.ReverseProxy {
 
 func (dsdh *DSDHandler) getCurrentUser(r *http.Request) *users.User {
 	sessionState := &SessionState{}
-	_, err := sessions.GetState(r, dsdh.Context.SigningKey, dsdh.Context.SessionStore, sessionState)
+	_, err := sessions.GetState(r, dsdh.ctx.SigningKey, dsdh.ctx.SessionStore, sessionState)
 	if err != nil {
 		return nil
 	}
